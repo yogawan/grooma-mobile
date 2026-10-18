@@ -93,6 +93,13 @@ class _ChangeRequestQueueScreenState extends State<ChangeRequestQueueScreen> {
         ),
       ),
     );
+    // Always back to page 1 here, not whatever page we were on — an
+    // approve/reject on the detail screen (which this push can't tell
+    // us happened or not) removes one row from the PENDING queue, so
+    // staying on e.g. page 2 risks reloading a page that's now short or
+    // empty (change-requests doc §3: "jangan mempertahankan posisi
+    // halaman").
+    _page = 1;
     _load();
   }
 
