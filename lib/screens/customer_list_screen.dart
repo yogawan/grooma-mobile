@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../models/customer.dart';
+import '../models/pagination.dart';
 import '../models/user.dart';
 import '../services/api_exception.dart';
 import '../services/customer_service.dart';
@@ -16,10 +17,11 @@ enum _LoadState { idle, loading, loaded, error }
 
 const _minQueryLength = 2;
 
-/// Search-first by design — the backend has no pagination on this
-/// endpoint at all, so an empty/trivial query would fetch the entire
-/// cross-branch customer base in one response (customer doc §2). A
-/// query shorter than [_minQueryLength] never reaches the network.
+/// Search-first by design — even though the endpoint is paginated now
+/// (AUTH doc §2.1.4) rather than returning the full cross-branch
+/// customer base in one response, an untargeted query would still walk
+/// every page just to find one person. A query shorter than
+/// [_minQueryLength] never reaches the network.
 class CustomerListScreen extends StatefulWidget {
   const CustomerListScreen({
     super.key,
@@ -41,6 +43,8 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
   _LoadState _state = _LoadState.idle;
   String? _errorMessage;
   List<Customer> _results = const [];
+  Pagination? _pagination;
+  int _page = 1;
 
   @override
   void dispose() {
@@ -56,10 +60,14 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
       setState(() {
         _state = _LoadState.idle;
         _results = const [];
+        _pagination = null;
       });
       return;
     }
-    _debounce = Timer(const Duration(milliseconds: 400), () => _search(query));
+    _debounce = Timer(const Duration(milliseconds: 400), () {
+      _page = 1;
+      _search(query);
+    });
   }
 
   Future<void> _search(String query) async {
@@ -68,9 +76,13 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
       _errorMessage = null;
     });
     try {
-      final results = await widget.customerService.search(search: query);
+      final result = await widget.customerService.search(
+        search: query,
+        page: _page,
+      );
       setState(() {
-        _results = results;
+        _results = result.customers;
+        _pagination = result.pagination;
         _state = _LoadState.loaded;
       });
     } on ApiException catch (e) {
@@ -79,6 +91,11 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
         _errorMessage = e.message;
       });
     }
+  }
+
+  void _changePage(int delta) {
+    _page += delta;
+    _search(_searchController.text.trim());
   }
 
   Future<void> _openCreate() async {
@@ -120,13 +137,18 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
             child: TextField(
               controller: _searchController,
               onChanged: _onSearchChanged,
+              // Backend rejects `search` over 100 chars with 400 (customer
+              // doc §2) — capped here so a stray paste can't trigger that.
+              maxLength: 100,
               decoration: const InputDecoration(
                 hintText: 'Cari nama atau nomor HP',
                 prefixIcon: Icon(Icons.search),
+                counterText: '',
               ),
             ),
           ),
           Expanded(child: _buildBody(context)),
+          if (_pagination != null) _buildPager(context, _pagination!),
         ],
       ),
     );
@@ -188,6 +210,34 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
         '${customer.loyaltyPoints} poin',
         style: Theme.of(context).textTheme.bodySmall
             ?.copyWith(color: AppColors.secondaryText),
+      ),
+    );
+  }
+
+  Widget _buildPager(BuildContext context, Pagination pagination) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          TextButton(
+            onPressed: pagination.page > 1 ? () => _changePage(-1) : null,
+            child: const Text('Sebelumnya'),
+          ),
+          Text(
+            // `pagination.total` is the count to show here, not
+            // `_results.length` (customer doc §2 checklist) — the latter
+            // is now capped at `limit` (20) per page and would understate
+            // how many customers actually match the search.
+            '${pagination.total} hasil • Halaman ${pagination.page} dari ${pagination.totalPages == 0 ? 1 : pagination.totalPages}',
+            style: Theme.of(context).textTheme.bodySmall
+                ?.copyWith(color: AppColors.secondaryText),
+          ),
+          TextButton(
+            onPressed: pagination.hasNextPage ? () => _changePage(1) : null,
+            child: const Text('Berikutnya'),
+          ),
+        ],
       ),
     );
   }
