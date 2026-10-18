@@ -26,9 +26,7 @@ class SubscriptionService {
   /// behavior, not an error or a locked state.
   Future<Subscription?> getStatus() async {
     try {
-      final response = await _dio.get<Map<String, dynamic>>(
-        '/api/v1/subscription',
-      );
+      final response = await _dio.get<Map<String, dynamic>>('/subscription');
       final json =
           response.data?['data']?['subscription'] as Map<String, dynamic>?;
       return json == null ? null : Subscription.fromJson(json);
@@ -37,16 +35,19 @@ class SubscriptionService {
     }
   }
 
-  /// The `status` query param is accepted but silently ignored
-  /// server-side (confirmed bug, doc §4.3) — this method doesn't
-  /// expose it at all rather than pretending to support server-side
-  /// filtering that doesn't work. Filter the returned list client-side
-  /// if needed.
-  Future<InvoicePage> listInvoices({int page = 1, int limit = 20}) async {
+  /// `status` is now genuinely applied server-side (fixed 2026-10-19,
+  /// doc §4.3 — it used to be validated then silently discarded).
+  /// Sending it narrows `pagination.total` to just that status too, so
+  /// don't treat `total` from a filtered call as "all invoices".
+  Future<InvoicePage> listInvoices({
+    int page = 1,
+    int limit = 20,
+    String? status,
+  }) async {
     try {
       final response = await _dio.get<Map<String, dynamic>>(
-        '/api/v1/subscription/invoices',
-        queryParameters: {'page': page, 'limit': limit},
+        '/subscription/invoices',
+        queryParameters: {'page': page, 'limit': limit, 'status': ?status},
       );
       return InvoicePage.fromJson(
         response.data!['data'] as Map<String, dynamic>,
