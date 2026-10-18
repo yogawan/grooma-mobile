@@ -72,7 +72,6 @@ class App extends StatelessWidget {
                       transactionService: transactionService,
                       changeRequestService: changeRequestService,
                       inventoryService: inventoryService,
-                      customerService: customerService,
                       branchService: branchService,
                       staffService: staffService,
                       serviceCatalogService: serviceCatalogService,
