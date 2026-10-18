@@ -11,6 +11,11 @@ class InventoryService {
 
   final Dio _dio;
 
+  /// The `search.isNotEmpty` guard below is load-bearing, not just
+  /// tidiness: unlike `/customers` (which treats `?search=` as "no
+  /// filter"), `/inventory` rejects an empty `search` with `400`
+  /// (inventory doc §1) — so an empty query string must omit the param
+  /// entirely rather than send it blank.
   Future<InventoryPage> list({
     int page = 1,
     int limit = 20,
@@ -20,7 +25,7 @@ class InventoryService {
   }) async {
     try {
       final response = await _dio.get<Map<String, dynamic>>(
-        '/api/v1/inventory',
+        '/inventory',
         queryParameters: {
           'page': page,
           'limit': limit,
@@ -53,7 +58,7 @@ class InventoryService {
   }) async {
     try {
       final response = await _dio.post<Map<String, dynamic>>(
-        '/api/v1/inventory',
+        '/inventory',
         data: {
           'itemCode': itemCode,
           'branchId': ?branchId,
@@ -74,7 +79,7 @@ class InventoryService {
     }
   }
 
-  Future<InventoryItem> detail(String id) => _getItem('/api/v1/inventory/$id');
+  Future<InventoryItem> detail(String id) => _getItem('/inventory/$id');
 
   /// `itemCode`/`branchId`/`quantity` are not accepted here at all —
   /// the backend schema doesn't know those fields on this endpoint
@@ -91,7 +96,7 @@ class InventoryService {
   }) async {
     try {
       final response = await _dio.patch<Map<String, dynamic>>(
-        '/api/v1/inventory/$id',
+        '/inventory/$id',
         data: {
           'name': ?name,
           if (category != null) 'category': category.apiValue,
@@ -114,7 +119,7 @@ class InventoryService {
   Future<InventoryItem> deactivate(String id) async {
     try {
       final response = await _dio.delete<Map<String, dynamic>>(
-        '/api/v1/inventory/$id',
+        '/inventory/$id',
       );
       return InventoryItem.fromJson(
         response.data!['data']['item'] as Map<String, dynamic>,
@@ -131,7 +136,7 @@ class InventoryService {
   }) async {
     try {
       final response = await _dio.get<Map<String, dynamic>>(
-        '/api/v1/inventory/$id/stock-movements',
+        '/inventory/$id/stock-movements',
         queryParameters: {'page': page, 'limit': limit},
       );
       return StockMovementPage.fromJson(
@@ -186,7 +191,7 @@ class InventoryService {
   ) async {
     try {
       final response = await _dio.post<Map<String, dynamic>>(
-        '/api/v1/inventory/$id/stock-movements',
+        '/inventory/$id/stock-movements',
         data: data,
       );
       return RecordMovementResult.fromJson(
