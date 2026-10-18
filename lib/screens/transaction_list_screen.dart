@@ -14,6 +14,7 @@ import '../utils/formatters.dart';
 import '../utils/status_colors.dart';
 import '../widgets/message_view.dart';
 import '../widgets/status_badge.dart';
+import 'change_request_queue_screen.dart';
 import 'create_transaction_screen.dart';
 import 'transaction_detail_screen.dart';
 
@@ -25,6 +26,9 @@ enum _LoadState { loading, loaded, locked, error }
 /// `branchId`/`agentId` filters and the `from`/`to`/`paymentStatus`
 /// filters are deferred for this simple first pass, same as the
 /// dashboard/profile modules before it.
+///
+/// Persetujuan Koreksi (HOST-only) lives here as a sub-page per
+/// docs/MOBILE-BOTTOM-NAVBAR.md, rather than as its own nav slot.
 class TransactionListScreen extends StatefulWidget {
   const TransactionListScreen({
     super.key,
@@ -32,12 +36,17 @@ class TransactionListScreen extends StatefulWidget {
     required this.changeRequestService,
     required this.authController,
     required this.user,
+    this.onChangeRequestsReviewed,
   });
 
   final TransactionService transactionService;
   final ChangeRequestService changeRequestService;
   final AuthController authController;
   final User user;
+
+  /// Notifies the parent (bottom-nav badge count) after the Persetujuan
+  /// sub-page is closed, since approving/rejecting there can change it.
+  final VoidCallback? onChangeRequestsReviewed;
 
   @override
   State<TransactionListScreen> createState() => _TransactionListScreenState();
@@ -150,11 +159,36 @@ class _TransactionListScreenState extends State<TransactionListScreen> {
     _load();
   }
 
+  Future<void> _openChangeRequestQueue() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ChangeRequestQueueScreen(
+          transactionService: widget.transactionService,
+          changeRequestService: widget.changeRequestService,
+          authController: widget.authController,
+          user: widget.user,
+        ),
+      ),
+    );
+    _load();
+    widget.onChangeRequestsReviewed?.call();
+  }
+
   @override
   Widget build(BuildContext context) {
     final isAgent = widget.user.role == UserRole.agent;
     return Scaffold(
-      appBar: AppBar(title: const Text('Transaksi')),
+      appBar: AppBar(
+        title: const Text('Transaksi'),
+        actions: [
+          if (!isAgent)
+            IconButton(
+              icon: const Icon(Icons.pending_actions_outlined),
+              tooltip: 'Persetujuan Koreksi',
+              onPressed: _openChangeRequestQueue,
+            ),
+        ],
+      ),
       floatingActionButton: isAgent
           ? FloatingActionButton(
               onPressed: _openCreate,

@@ -61,9 +61,14 @@ class _StaffFormScreenState extends State<StaffFormScreen> {
     _loadBranches();
   }
 
+  /// Uses [BranchService.listAll] rather than [BranchService.list] —
+  /// this dropdown needs the complete branch set to pick from, and
+  /// `/branches` now defaults to 20 rows per page (AUTH doc §2.1.4
+  /// calls this exact kind of picker out as the most likely to
+  /// silently truncate otherwise).
   Future<void> _loadBranches() async {
     try {
-      final branches = await widget.branchService.list();
+      final branches = await widget.branchService.listAll();
       if (mounted) setState(() => _branches = branches);
     } on ApiException catch (e) {
       if (mounted) setState(() => _branchLoadError = e.message);

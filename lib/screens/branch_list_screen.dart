@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/managed_branch.dart';
+import '../models/pagination.dart';
 import '../services/api_exception.dart';
 import '../services/branch_service.dart';
 import '../theme/app_colors.dart';
@@ -11,9 +12,8 @@ import 'branch_form_screen.dart';
 
 enum _LoadState { loading, loaded, locked, error }
 
-/// No pagination/search on this endpoint at all (Kelola doc §0, §1.1)
-/// — fine at the dozens-of-branches scale this is meant for; a plain
-/// full list, no client-side search added for this first pass.
+/// Paginated now (AUTH doc §2.1.4) — default 20 rows per page, no
+/// client-side search added for this first pass.
 class BranchListScreen extends StatefulWidget {
   const BranchListScreen({super.key, required this.branchService});
 
@@ -27,6 +27,8 @@ class _BranchListScreenState extends State<BranchListScreen> {
   _LoadState _state = _LoadState.loading;
   String? _errorMessage;
   List<ManagedBranch> _branches = const [];
+  Pagination? _pagination;
+  int _page = 1;
 
   @override
   void initState() {
@@ -40,9 +42,10 @@ class _BranchListScreenState extends State<BranchListScreen> {
       _errorMessage = null;
     });
     try {
-      final branches = await widget.branchService.list();
+      final result = await widget.branchService.list(page: _page);
       setState(() {
-        _branches = branches;
+        _branches = result.branches;
+        _pagination = result.pagination;
         _state = _LoadState.loaded;
       });
     } on ApiException catch (e) {
@@ -53,6 +56,11 @@ class _BranchListScreenState extends State<BranchListScreen> {
         _errorMessage = e.message;
       });
     }
+  }
+
+  void _changePage(int delta) {
+    setState(() => _page += delta);
+    _load();
   }
 
   Future<void> _openCreate() async {
@@ -84,7 +92,12 @@ class _BranchListScreenState extends State<BranchListScreen> {
         onPressed: _openCreate,
         child: const Icon(Icons.add),
       ),
-      body: _buildBody(context),
+      body: Column(
+        children: [
+          Expanded(child: _buildBody(context)),
+          if (_pagination != null) _buildPager(context, _pagination!),
+        ],
+      ),
     );
   }
 
@@ -134,6 +147,30 @@ class _BranchListScreenState extends State<BranchListScreen> {
         color: branch.status == BranchStatus.active
             ? AppColors.success
             : AppColors.secondaryText,
+      ),
+    );
+  }
+
+  Widget _buildPager(BuildContext context, Pagination pagination) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          TextButton(
+            onPressed: pagination.page > 1 ? () => _changePage(-1) : null,
+            child: const Text('Sebelumnya'),
+          ),
+          Text(
+            'Halaman ${pagination.page} dari ${pagination.totalPages == 0 ? 1 : pagination.totalPages}',
+            style: Theme.of(context).textTheme.bodySmall
+                ?.copyWith(color: AppColors.secondaryText),
+          ),
+          TextButton(
+            onPressed: pagination.hasNextPage ? () => _changePage(1) : null,
+            child: const Text('Berikutnya'),
+          ),
+        ],
       ),
     );
   }

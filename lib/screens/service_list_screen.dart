@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../models/pagination.dart';
 import '../models/service_item.dart';
 import '../services/api_exception.dart';
 import '../services/service_catalog_service.dart';
@@ -15,7 +16,8 @@ enum _LoadState { loading, loaded, locked, error }
 /// This screen is HOST-only UI (reached from the Kelola hub), so the
 /// list always includes inactive services too (Kelola doc §3.1: only
 /// AGENT's view is filtered to active-only, server-side, and AGENT
-/// never opens this screen). No pagination/search on the endpoint.
+/// never opens this screen). Paginated now (AUTH doc §2.1.4), default
+/// 20 rows per page, no client-side search added for this first pass.
 class ServiceListScreen extends StatefulWidget {
   const ServiceListScreen({super.key, required this.serviceCatalogService});
 
@@ -29,6 +31,8 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
   _LoadState _state = _LoadState.loading;
   String? _errorMessage;
   List<ServiceItem> _services = const [];
+  Pagination? _pagination;
+  int _page = 1;
 
   @override
   void initState() {
@@ -42,9 +46,10 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
       _errorMessage = null;
     });
     try {
-      final services = await widget.serviceCatalogService.list();
+      final result = await widget.serviceCatalogService.list(page: _page);
       setState(() {
-        _services = services;
+        _services = result.services;
+        _pagination = result.pagination;
         _state = _LoadState.loaded;
       });
     } on ApiException catch (e) {
@@ -55,6 +60,11 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
         _errorMessage = e.message;
       });
     }
+  }
+
+  void _changePage(int delta) {
+    setState(() => _page += delta);
+    _load();
   }
 
   Future<void> _openCreate() async {
@@ -88,7 +98,12 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
         onPressed: _openCreate,
         child: const Icon(Icons.add),
       ),
-      body: _buildBody(context),
+      body: Column(
+        children: [
+          Expanded(child: _buildBody(context)),
+          if (_pagination != null) _buildPager(context, _pagination!),
+        ],
+      ),
     );
   }
 
@@ -148,6 +163,30 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
         formatRupiah(service.price),
         style: Theme.of(context).textTheme.bodyMedium
             ?.copyWith(fontWeight: FontWeight.w600),
+      ),
+    );
+  }
+
+  Widget _buildPager(BuildContext context, Pagination pagination) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          TextButton(
+            onPressed: pagination.page > 1 ? () => _changePage(-1) : null,
+            child: const Text('Sebelumnya'),
+          ),
+          Text(
+            'Halaman ${pagination.page} dari ${pagination.totalPages == 0 ? 1 : pagination.totalPages}',
+            style: Theme.of(context).textTheme.bodySmall
+                ?.copyWith(color: AppColors.secondaryText),
+          ),
+          TextButton(
+            onPressed: pagination.hasNextPage ? () => _changePage(1) : null,
+            child: const Text('Berikutnya'),
+          ),
+        ],
       ),
     );
   }
