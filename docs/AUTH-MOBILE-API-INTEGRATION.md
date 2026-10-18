@@ -1,6 +1,8 @@
 # Integrasi Mobile (Flutter) — Grooma API — Modul Auth
 
 > Panduan integrasi API Grooma untuk aplikasi mobile Flutter (Android) yang dipakai oleh dua role dalam **satu aplikasi**: **HOST** dan **AGENT**. Dokumen ini khusus modul **Auth** (login, session check, logout). Modul lain (profile, transaksi, dsb.) didokumentasikan di file terpisah dengan pola penamaan yang sama: `docs/[NAMA-MODULE]-MOBILE-API-INTEGRATION.md`.
+>
+> **Dokumen ini juga memuat dua kontrak lintas-modul** yang dirujuk seluruh dokumen lain, supaya tidak diulang-ulang: **Base URL & setup `dio` + cookie jar** (bagian 1–2) dan **kontrak pagination untuk semua endpoint list** (bagian 2.1).
 
 ---
 
@@ -14,6 +16,9 @@
 
 3. **Auth-nya session cookie, BUKAN bearer token.**
    Ini bagian paling kritis buat integrasi mobile. Login **tidak** mengembalikan `access_token`/`jwt` apa pun di body JSON. Token sesi hanya dikirim lewat header `Set-Cookie` (httpOnly), dan setiap request berikutnya harus mengirim balik cookie itu lewat header `Cookie`. Flutter **wajib** pakai HTTP client dengan cookie jar persisten (bagian 2) — kalau tidak, request pertama setelah login akan selalu dianggap belum login oleh backend.
+
+4. **Seluruh endpoint list berpaginasi, dan empat di antaranya baru saja berubah.**
+   Sejak 2026-10-19 setiap `GET` yang mengembalikan daftar memakai satu bentuk `page`/`limit` + `pagination` yang sama (bagian 2.1) — jadi cukup satu model Dart. **Yang perlu perhatian sekarang:** `GET /customers`, `/users`, `/services`, dan `/branches` dulu mengembalikan seluruh koleksi dan sekarang dibatasi 20 baris per default. Perubahan itu **tidak memunculkan error apa pun** di app lama, hanya memotong datanya diam-diam — baca bagian 2.1.4 dan audit layar yang terdampak sebelum backend versi ini dirilis.
 
 ---
 
@@ -64,7 +69,7 @@ final cookieJar = PersistCookieJar(
 );
 
 final dio = Dio(BaseOptions(
-  baseUrl: baseUrl, // dari konfigurasi, lihat bagian 1
+  baseUrl: '$baseUrl/api/v1', // baseUrl dari konfigurasi (bagian 1) + prefix API
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
@@ -75,7 +80,135 @@ dio.interceptors.add(CookieManager(cookieJar));
 
 Selama instance `dio` ini dipakai untuk SEMUA request (login, logout, endpoint lain setelahnya), cookie terlampir otomatis — tidak perlu kode tambahan untuk "attach token" di tiap call.
 
+> **Penting untuk semua doc modul lain (profile, dashboard, transaksi, dsb.):** karena `baseUrl` instance `dio` di atas sudah memuat `/api/v1`, setiap contoh kode Dart di dokumen lain memanggil path **relatif tanpa `/api/v1`** lagi — mis. `dio.get('/profile')`, bukan `dio.get('/api/v1/profile')`. Notasi `{BASE_URL}/api/v1/...` yang dipakai di contoh `curl`/deskripsi endpoint sepanjang dokumen-dokumen ini tetap menunjukkan URL absolut lengkap seperti apa adanya — itu cuma konvensi penulisan dokumentasi, beda dari `baseUrl` di kode yang sudah mencakup prefix-nya.
+
 > Karena ini native app (bukan Flutter Web), **CORS tidak relevan** di sini — CORS hanya berlaku untuk request dari browser.
+
+---
+
+## 2.1. Kontrak Pagination — Berlaku di SEMUA Endpoint List
+
+> **Baru (2026-10-19).** Sebelumnya hanya 4 endpoint yang berpaginasi dan bentuknya tidak seragam. Sekarang **seluruh** endpoint `GET` yang mengembalikan daftar memakai satu bentuk yang sama, jadi cukup **satu model Dart** untuk semuanya. Bagian ini adalah acuan tunggal — dokumen modul lain tidak mengulang detailnya.
+>
+> **⚠️ Ada perubahan yang memutus perilaku lama di 4 endpoint — lihat §2.1.4 sebelum rilis.**
+
+### 2.1.1. Request
+
+| Param | Tipe | Default | Batas |
+|---|---|---|---|
+| `page` | `integer` | `1` | ≥ 1, **1-based** (bukan 0-based) |
+| `limit` | `integer` | `20` | `1`–`100` |
+
+Keduanya **opsional** — request tanpa keduanya tetap `200` dan memakai default. Nilai di luar batas ditolak `400 VALIDATION_ERROR`, **tidak** dipotong diam-diam ke nilai terdekat: `limit=500` adalah error, bukan `limit=100`. Tidak ada `limit=all` atau `limit=-1`; tidak ada cara meminta seluruh koleksi dalam satu request.
+
+Query param yang tidak dikenal **diabaikan** (bukan `400`) di endpoint list, jadi cache-buster atau param analitik aman dikirim. *Catatan: ini berbeda dari endpoint `/dashboard/*`, yang strict dan menolak param asing — lihat dokumen Dashboard §2.*
+
+### 2.1.2. Response
+
+Selalu dua key di dalam `data`: satu array bernama sesuai resource-nya, plus satu objek `pagination`.
+
+```json
+{
+  "success": true,
+  "data": {
+    "transactions": [ { "...": "..." } ],
+    "pagination": { "page": 1, "limit": 20, "total": 137, "totalPages": 7 }
+  }
+}
+```
+
+| Field | Arti |
+|---|---|
+| `page` | Halaman yang **diminta** — dipantulkan apa adanya, lihat §2.1.3 |
+| `limit` | `limit` efektif yang dipakai untuk query ini |
+| `total` | Jumlah **seluruh** baris yang cocok filter, mengabaikan `page`/`limit` |
+| `totalPages` | `ceil(total / limit)`; bernilai `0` kalau `total` 0 |
+
+Nama key array per endpoint (tetap seperti sebelumnya, **tidak** diseragamkan jadi `items`):
+
+| Endpoint | Key array |
+|---|---|
+| `GET /transactions` | `transactions` |
+| `GET /transaction-change-requests` | `transactions` |
+| `GET /inventory` | `items` |
+| `GET /inventory/:id/stock-movements` | `movements` |
+| `GET /customers` | `customers` |
+| `GET /users` | `users` |
+| `GET /services` | `services` |
+| `GET /branches` | `branches` |
+| `GET /subscription/invoices` | `invoices` |
+
+Keempat field `pagination` **selalu ada**, termasuk saat hasilnya kosong — daftar kosong adalah `{"<resource>": [], "pagination": {"page":1,"limit":20,"total":0,"totalPages":0}}`, bukan `data: null` dan bukan `pagination` yang dihilangkan. Jadi model Dart-nya boleh non-nullable.
+
+**Tidak ada pagination lewat HTTP header.** Tidak ada `X-Total-Count`, tidak ada `Link`. Semua metadata ada di body.
+
+### 2.1.3. Perilaku Tepi
+
+| Kasus | Perilaku |
+|---|---|
+| `page` melebihi `totalPages` (mis. `page=99` dari 7 halaman) | **`200`** dengan array kosong. `pagination` tetap terisi benar: `page: 99`, `total: 137`, `totalPages: 7`. **Bukan `404`** — halaman kosong bukan resource yang hilang |
+| Filter tidak cocok apa pun | `200`, array kosong, `total: 0`, `totalPages: 0` |
+| `page=0`, `page=abc`, `limit=0`, `limit=101` | `400 VALIDATION_ERROR` |
+
+⚠️ **`pagination.page` memantulkan apa yang diminta, bukan apa yang dilayani.** Kalau app meminta `page=99` dari 7 halaman, response-nya `page: 99` dengan array kosong — ini disengaja supaya app bisa membandingkan `page` dengan `totalPages` dan memperbaiki posisinya. Jangan asumsikan `page <= totalPages` selalu benar; untuk infinite scroll, **hentikan fetch saat `page >= totalPages`**, jangan menunggu error yang tidak akan datang.
+
+### 2.1.4. ⚠️ Perubahan yang Memutus Perilaku Lama
+
+**Empat endpoint ini dulu mengembalikan SELURUH koleksi dalam satu response. Sekarang default-nya 20 baris.**
+
+| Endpoint | Dulu | Sekarang |
+|---|---|---|
+| `GET /customers` | seluruh customer | 20 pertama + `pagination` |
+| `GET /users` | seluruh akun staf | 20 pertama + `pagination` |
+| `GET /services` | seluruh layanan | 20 pertama + `pagination` |
+| `GET /branches` | seluruh cabang | 20 pertama + `pagination` |
+
+**Apa yang pecah di app lama:** kode yang membaca `data.customers` **tetap jalan** (key-nya tidak berubah, `pagination` cuma key tambahan). Yang pecah adalah **asumsi bahwa array itu lengkap** — layar yang menampilkan "semua layanan" atau "semua karyawan" sekarang diam-diam cuma menampilkan 20 pertama, tanpa error apa pun.
+
+**Yang harus dilakukan sebelum rilis backend ini:**
+- Setiap layar yang memakai keempat endpoint di atas: tambahkan paging (infinite scroll / tombol "muat lebih") **atau** kirim `limit` eksplisit yang cukup besar (maks `100`) kalau memang datanya pasti sedikit.
+- Dropdown/picker yang perlu daftar lengkap (mis. picker layanan saat buat transaksi, picker cabang saat tambah karyawan) **paling rawan** — kalau bisnis punya > 20 layanan, pilihan ke-21 dan seterusnya tidak akan pernah muncul. Pakai `limit=100`, dan kalau `totalPages > 1` ambil halaman berikutnya juga sebelum membangun daftar pilihannya.
+- Jangan pakai `pagination.total` untuk memutuskan apakah perlu fetch lagi — pakai `totalPages`, karena `total` dihitung sebelum `limit` diterapkan.
+
+### 2.1.5. Urutan Hasil Sekarang Stabil
+
+Setiap query berpaginasi sekarang punya **tie-breaker unik** (`_id`) di belakang kunci urutannya. Sebelumnya tidak ada, dan akibatnya baris yang nilai sort-nya seri bisa muncul di urutan berbeda antar request — sehingga menelusuri halaman bisa **melewatkan** satu baris atau **menampilkannya dua kali**. Paling terasa di `GET /inventory` (urut `name`, dan nama item duplikat antar cabang itu normal).
+
+Kalau app sudah punya workaround untuk ini (dedup by `_id` saat append halaman baru, dsb.), workaround itu sekarang tidak diperlukan lagi — tapi membiarkannya juga tidak merusak apa pun.
+
+### 2.1.6. Satu Model Dart untuk Semua
+
+```dart
+class Pagination {
+  final int page;
+  final int limit;
+  final int total;
+  final int totalPages;
+
+  const Pagination({
+    required this.page,
+    required this.limit,
+    required this.total,
+    required this.totalPages,
+  });
+
+  factory Pagination.fromJson(Map<String, dynamic> json) => Pagination(
+        page: json['page'] as int,
+        limit: json['limit'] as int,
+        total: json['total'] as int,
+        totalPages: json['totalPages'] as int,
+      );
+
+  /// Ada halaman berikutnya? Pakai ini, bukan perbandingan ke `total`.
+  bool get hasNextPage => page < totalPages;
+}
+```
+
+Backend **tidak** mengirim `hasNextPage`/`hasPrevPage` — turunkan sendiri dari `page` dan `totalPages` seperti di atas.
+
+> **Satu pengecualian yang masih ada:** `GET /subscription/invoices` mengirim **dua** field yang nilainya identik — `totalPages` **dan** `pages` (nama lama). Pakai `totalPages`; `pages` hanya ada supaya build lama tidak pecah dan akan dihapus. Model di atas sudah cukup, field `pages` yang tidak dibaca akan terabaikan. Lihat dokumen Kelola §4.3.
+
+> **Endpoint `/dashboard/*` TIDAK memakai kontrak ini.** Dashboard mengembalikan hasil agregasi (peringkat/worklist), bukan daftar resource — tidak ada `page`, dan metadatanya memakai key `meta`, bukan `pagination`. Lihat dokumen Dashboard §2 dan §3.
 
 ---
 
@@ -257,6 +390,9 @@ Setelah logout, app tetap harus **clear local state** (user info yang disimpan d
 - [ ] Bedakan pesan error `403 ACCOUNT_INACTIVE` dari `401 INVALID_CREDENTIALS` di layar login.
 - [ ] Tangani `429 RATE_LIMITED` dengan cooldown di sisi client (server tidak kirim `Retry-After`).
 - [ ] Logout: panggil endpoint, lalu clear state lokal terlepas dari hasilnya.
+- [ ] **Satu model `Pagination` dipakai bersama** untuk seluruh endpoint list (bagian 2.1.6), bukan satu model per modul.
+- [ ] **Audit setiap layar yang memanggil `/customers`, `/users`, `/services`, atau `/branches`** — keempatnya sekarang dibatasi 20 baris per default dan dulu tidak (bagian 2.1.4). Paling rawan: dropdown/picker yang butuh daftar lengkap.
+- [ ] Infinite scroll berhenti saat `page >= totalPages`, bukan menunggu error atau array kosong (bagian 2.1.3).
 
 ---
 

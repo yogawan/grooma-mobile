@@ -189,6 +189,10 @@ Tombol submit transaksi adalah target klasik double-tap/double-submit (koneksi l
 
 ⚠️ **AGENT melihat SELURUH transaksi di cabangnya, bukan cuma transaksi yang dia buat sendiri.** Tidak ada filter "transaksi saya" otomatis untuk AGENT — kalau butuh itu di UI, filter di sisi client berdasarkan `agent._id` yang cocok dengan id user login sendiri.
 
+> ⚠️ **Hati-hati menggabungkan filter client-side itu dengan pagination:** memfilter "transaksi saya" atas satu halaman hasil akan menampilkan jumlah yang tidak konsisten per halaman (halaman berisi 20 transaksi cabang bisa cuma menyisakan 3 milik AGENT tersebut), dan `pagination.total` menghitung transaksi **cabang**, bukan hasil filter lokal. Kalau layar "transaksi saya" dibutuhkan, lebih baik kirim `agentId`… tapi param itu **HOST only** dan diabaikan untuk AGENT, jadi untuk sekarang pilihannya: terima inkonsistensi per halaman, atau fetch beberapa halaman sampai cukup. Jangan tampilkan `pagination.total` sebagai "jumlah transaksi saya".
+
+> **Kontrak pagination endpoint ini tidak berubah** pada pembaruan 2026-10-19 — sudah sesuai standar sejak awal. Acuan lengkapnya (perilaku tepi, `page` di luar rentang, model Dart bersama) di `AUTH-MOBILE-API-INTEGRATION.md` §2.1. Yang berubah: urutannya sekarang **stabil** (`createdAt` desc + tie-breaker `_id`) — relevan di sini karena transaksi yang dibuat pada detik yang sama dulu bisa bertukar posisi antar halaman.
+
 ### Response `200 OK`
 
 ```json

@@ -110,6 +110,12 @@ Kalau dapat `409` karena sudah ada pengajuan `PENDING`, tidak ada cara "update" 
 
 ⚠️ **Tidak ada filter `branchId` di endpoint ini** — HOST dengan banyak cabang melihat **seluruh** pengajuan `PENDING` lintas cabang dalam satu list tanpa bisa difilter per cabang dari query. Kalau butuh grouping per cabang di UI, lakukan di sisi client dari field `transaction.branch` pada tiap item.
 
+> ⚠️ **Grouping per cabang di client × pagination:** pengelompokan itu hanya berlaku atas halaman yang sudah di-fetch, jadi header grup bisa muncul berulang saat halaman berikutnya datang. Untuk antrian approval yang biasanya pendek, cara paling sederhana: kirim `limit=100` sekali, dan baru tangani paging kalau `totalPages > 1`.
+
+> **Kontrak pagination endpoint ini tidak berubah** pada pembaruan 2026-10-19 — sudah sesuai standar sejak awal. Acuan lengkapnya di `AUTH-MOBILE-API-INTEGRATION.md` §2.1. Yang berubah: urutannya sekarang **stabil** (`changeRequest.requestedAt` desc + tie-breaker `_id`).
+>
+> Khusus endpoint ini ada satu hal yang perlu diperhatikan soal paging: **isi list berubah saat HOST bekerja.** Setiap approve/reject mengeluarkan satu baris dari antrian `PENDING`, sehingga `total` mengecil dan baris bergeser maju. Kalau HOST sedang di halaman 2 lalu menyetujui beberapa pengajuan, halaman 2 bisa jadi kosong. **Refetch dari halaman 1 setelah setiap aksi approve/reject**, jangan mempertahankan posisi halaman.
+
 ### Response `200 OK`
 
 ```json

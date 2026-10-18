@@ -30,13 +30,24 @@
 
 ### Query Params
 
-| Param | Tipe | Catatan |
-|---|---|---|
-| `search` | `string` | Cocok ke `name` (regex, case-insensitive) **atau** `phone` (lihat normalisasi di §2.1) |
+| Param | Tipe | Default | Catatan |
+|---|---|---|---|
+| `page` | `integer` | `1` | |
+| `limit` | `integer` | `20` | Maks `100` |
+| `search` | `string` | — | Maks 100 karakter. Cocok ke `name` (regex, case-insensitive) **atau** `phone` (lihat normalisasi di §2.1) |
 
-⚠️ **TIDAK ADA PAGINATION di endpoint ini** — tidak ada `page`/`limit` sama sekali. Kalau `search` tidak diisi, endpoint ini mengembalikan **SELURUH customer** dalam satu response, terurut alfabetis. Untuk bisnis yang sudah punya ribuan customer, ini bisa jadi payload besar.
+Terurut alfabetis berdasarkan `name` (tie-breaker `_id`, jadi urutannya stabil antar halaman). Kontrak pagination lengkapnya di `AUTH-MOBILE-API-INTEGRATION.md` §2.1.
 
-**Rekomendasi:** jangan panggil endpoint ini tanpa `search` untuk kebutuhan "browse semua customer" — desain UI supaya AGENT/HOST selalu mengetik minimal beberapa karakter dulu (nama atau nomor HP) sebelum query dikirim, mis. debounce search-as-you-type dengan minimal 2–3 karakter. Kalau memang butuh daftar lengkap untuk ditampilkan sekaligus, siapkan virtualized list di sisi Flutter karena semua data datang dalam satu response.
+✅ **Endpoint ini sekarang berpaginasi.** *(Berubah 2026-10-19 — sebelumnya tidak ada `page`/`limit` sama sekali, dan tanpa `search` endpoint ini mengembalikan SELURUH tabel customer dalam satu response.)*
+
+**Yang berubah untuk app:** `data.customers` tetap ada dan bentuk itemnya tidak berubah, jadi kode parsing lama tetap jalan. Yang berubah adalah **jumlah barisnya dibatasi 20 per default**. Layar yang dulu menerima seluruh basis customer sekarang menerima 20 pertama tanpa error apa pun.
+
+**Dua catatan kompatibilitas `search`:**
+
+1. **`?search=` kosong tetap berarti "tanpa filter"**, bukan `400` — persis seperti perilaku lama. Search box yang dikosongkan user aman mengirim string kosong; backend menormalkannya jadi "tidak ada filter". *(Catatan: `/inventory` dan `/transactions` justru menolak `?search=` kosong dengan `400` — beda perilaku yang sudah ada sejak sebelum perubahan ini, jangan diasumsikan seragam.)*
+2. **`search` sekarang dibatasi 100 karakter** (`400` kalau lebih). Sebelumnya tidak ada batas. Tidak berdampak pada input manusia normal, tapi kalau app pernah mengirim isi clipboard mentah ke field ini, tambahkan `maxLength` di sisi UI.
+
+**Rekomendasi UI tetap sama, dan sekarang lebih aman:** desain search-first dengan debounce 2–3 karakter. Bedanya, "browse semua customer" sekarang **bisa** dilakukan dengan benar lewat infinite scroll (`page` naik sampai `page >= totalPages`) tanpa menarik ribuan baris sekaligus — pakai `pagination.total` untuk menampilkan jumlah hasil, bukan `customers.length`.
 
 ### 2.1. Normalisasi Nomor HP — Tidak Perlu Dilakukan di Client
 
@@ -68,7 +79,8 @@ Backend otomatis mencocokkan varian format nomor Indonesia saat `search` maupun 
         "createdAt": "2026-01-10T08:00:00.000Z",
         "updatedAt": "2026-10-10T09:00:00.000Z"
       }
-    ]
+    ],
+    "pagination": { "page": 1, "limit": 20, "total": 1340, "totalPages": 67 }
   }
 }
 ```
@@ -92,12 +104,15 @@ Backend otomatis mencocokkan varian format nomor Indonesia saat `search` maupun 
         "createdAt": "2026-01-10T08:00:00.000Z",
         "updatedAt": "2026-10-10T09:00:00.000Z"
       }
-    ]
+    ],
+    "pagination": { "page": 1, "limit": 20, "total": 1340, "totalPages": 67 }
   }
 }
 ```
 
 Perhatikan: tidak ada `"email": null` di response AGENT — key `email`/`gender`/`birthDate`/`address`/`notes` memang tidak dikirim sama sekali.
+
+Objek `pagination` **identik untuk kedua role** — perbedaan per-role di modul ini murni soal field PII di dalam item (§0), tidak menyentuh metadata pagination. `total` juga sama untuk kedua role, karena customer tidak disaring per role maupun per cabang.
 
 ---
 
@@ -222,6 +237,7 @@ Tidak ada efek lanjutan otomatis ke transaksi lama milik customer ini — menona
 
 - **Buat 2 variant model Dart (atau semua field privileged nullable) untuk Customer** — field `email`/`gender`/`birthDate`/`address`/`notes` bisa benar-benar absen dari JSON tergantung role yang login (§0). Model dengan field itu non-nullable akan gagal parse response AGENT.
 - **Form edit customer untuk AGENT: sembunyikan 5 field privileged dari UI** — bukan karena backend menolaknya (backend tidak menolak, lihat §5), tapi supaya AGENT tidak bisa menulis data yang mereka sendiri tidak bisa lihat/verifikasi.
-- **Endpoint list (§2) tidak berpaginasi** — desain search-first, jangan panggil tanpa query untuk "lihat semua" kecuali memang siap menerima seluruh data customer dalam satu response.
+- **Endpoint list (§2) sekarang berpaginasi, default 20 baris** — dulu tidak. Layar yang menampilkan hasil search panjang butuh infinite scroll; berhenti saat `page >= totalPages`. Tampilkan jumlah hasil dari `pagination.total`, bukan `customers.length` (yang sekarang maksimal 20).
+- **Search box boleh tetap mengirim string kosong** saat dikosongkan user (§2) — backend menganggapnya "tanpa filter", sama seperti sebelumnya. Tapi tambahkan `maxLength: 100` di field-nya, karena kiriman lebih panjang sekarang ditolak `400`.
 - **Jangan asumsikan `201` dari create = data kosong baru** — selalu render response-nya, bukan input form-nya, karena bisa saja backend mengembalikan customer lama yang sudah match by phone (§3).
 - **Tidak perlu filter berdasarkan cabang di UI manapun untuk modul ini** — berbeda dari Transaksi/Inventaris, AGENT di sini melihat seluruh basis customer bisnis, bukan cuma cabangnya.

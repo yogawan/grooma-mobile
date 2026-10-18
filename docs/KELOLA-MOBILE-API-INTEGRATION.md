@@ -44,7 +44,20 @@ Keempat sub-modul ini ditulis di waktu berbeda dan **tidak seragam**. Tiga hal i
 | Cabang, Layanan, Subscription, Invoice | `_id` |
 | **Karyawan** | **`id`** (plus `branch` jadi `{id, name}`, bukan `{_id, name}`) |
 
-**3. Tidak satu pun dari 3 endpoint list (Cabang/Karyawan/Layanan) punya pagination atau search.** Semuanya mengembalikan seluruh data sekaligus. Hanya invoice subscription yang berpaginasi — dan itupun pakai key `pages`, bukan `totalPages` seperti modul lain.
+**3. Keempat endpoint list sekarang berpaginasi dengan bentuk yang sama.** *(Berubah 2026-10-19 — sebelumnya Cabang/Karyawan/Layanan mengembalikan seluruh data sekaligus, dan invoice memakai key `pages`.)*
+
+| Resource | Pagination | Search/filter server-side |
+|---|---|---|
+| Cabang | `page`/`limit` | ❌ tidak ada |
+| Karyawan | `page`/`limit` | ❌ tidak ada |
+| Layanan | `page`/`limit` | ❌ tidak ada |
+| Invoice subscription | `page`/`limit` | ✅ `status` (**sekarang berfungsi**, lihat §4.3) |
+
+Bentuk `pagination`-nya identik di keempatnya dan sama dengan modul lain — `{page, limit, total, totalPages}`. Kontrak lengkapnya **tidak diulang di sini**: lihat `AUTH-MOBILE-API-INTEGRATION.md` §2.1.
+
+> ⚠️ **Ketiga list Cabang/Karyawan/Layanan dulu mengembalikan SELURUH data; sekarang default 20 baris.** Ini memutus perilaku lama tanpa error apa pun — baca `AUTH-MOBILE-API-INTEGRATION.md` §2.1.4 sebelum rilis. Search & filter untuk ketiganya masih harus di sisi client, jadi kalau layar melakukan filter lokal atas hasil fetch, **sekarang ia memfilter 20 baris pertama saja**, bukan seluruh data.
+>
+> `pages` di invoice masih dikirim berdampingan dengan `totalPages` demi build lama, tapi sudah deprecated — pakai `totalPages`.
 
 ---
 
@@ -52,9 +65,18 @@ Keempat sub-modul ini ditulis di waktu berbeda dan **tidak seragam**. Tiga hal i
 
 ## 1.1. GET /api/v1/branches — List Cabang
 
-Tanpa query param apa pun. **Tidak ada pagination.** Terurut berdasarkan `name`.
+### Query Params
 
-AGENT **boleh** memanggil ini (tidak ada `requireRole`), tapi hanya menerima **satu cabang: miliknya sendiri**. Berguna untuk menampilkan info cabang di halaman Profil AGENT.
+| Param | Tipe | Default | Catatan |
+|---|---|---|---|
+| `page` | `integer` | `1` | |
+| `limit` | `integer` | `20` | Maks `100` |
+
+Tidak ada param search/filter. Terurut berdasarkan `name` (dengan tie-breaker `_id`, jadi urutannya stabil antar halaman).
+
+AGENT **boleh** memanggil ini (tidak ada `requireRole`), tapi hanya menerima **satu cabang: miliknya sendiri**. Berguna untuk menampilkan info cabang di halaman Profil AGENT. Untuk AGENT, `pagination` tetap terisi penuh dengan `total: 1` — bentuk response-nya identik dengan HOST, cuma isinya satu baris, jadi tidak perlu jalur parsing khusus per role.
+
+> AGENT yang belum punya cabang ditugaskan (kasus langka) dapat `200` dengan `branches: []` dan `total: 0` — bukan error.
 
 ```json
 {
@@ -72,10 +94,13 @@ AGENT **boleh** memanggil ini (tidak ada `requireRole`), tapi hanya menerima **s
         "createdAt": "2026-01-05T04:00:00.000Z",
         "updatedAt": "2026-09-20T07:30:00.000Z"
       }
-    ]
+    ],
+    "pagination": { "page": 1, "limit": 20, "total": 3, "totalPages": 1 }
   }
 }
 ```
+
+⚠️ **Picker cabang di form tambah/edit karyawan (§2.2) butuh daftar lengkap.** Dengan default 20, bisnis dengan lebih dari 20 cabang akan punya cabang yang tidak bisa dipilih sama sekali. Kirim `limit=100` dan cek `totalPages` sebelum membangun daftar pilihannya.
 
 ## 1.2. POST /api/v1/branches — Tambah Cabang
 
@@ -120,9 +145,18 @@ HOST bisa cabang manapun; AGENT **hanya cabangnya sendiri** (`403` untuk cabang 
 
 ## 2.1. GET /api/v1/users — List Karyawan
 
-Tanpa query param. **Tidak ada pagination, tidak ada search, tidak ada filter role/status.** Mengembalikan seluruh akun sekaligus, terurut dari yang terbaru dibuat.
+### Query Params
 
-> Kalau daftar staf sudah banyak, pencarian/filter harus dilakukan **di sisi Flutter** atas hasil yang sudah di-fetch.
+| Param | Tipe | Default | Catatan |
+|---|---|---|---|
+| `page` | `integer` | `1` | |
+| `limit` | `integer` | `20` | Maks `100` |
+
+**Tidak ada search, tidak ada filter role/status** — hanya pagination. Terurut dari yang terbaru dibuat (`createdAt` desc, tie-breaker `_id`).
+
+⚠️ **Konsekuensi gabungan pagination + tanpa search:** pencarian/filter staf tetap harus dilakukan **di sisi Flutter**, tapi sekarang yang tersedia untuk difilter hanya halaman yang sudah di-fetch. Layar "cari karyawan" yang dulu memfilter seluruh daftar sekarang memfilter 20 baris pertama saja. Pilihan: naikkan `limit` ke `100`, atau fetch seluruh halaman di muka (loop sampai `page > totalPages`) sebelum memfilter secara lokal.
+
+> Akun platform internal (`GROOMA_ADMIN`) tidak muncul di list ini, dan `pagination.total` **juga tidak menghitungnya** — `total` konsisten dengan baris yang benar-benar dikembalikan, jadi tidak akan ada selisih yang membingungkan antara `total` dan jumlah baris yang bisa ditelusuri.
 
 ```json
 {
@@ -140,12 +174,13 @@ Tanpa query param. **Tidak ada pagination, tidak ada search, tidak ada filter ro
         "createdAt": "2026-09-01T10:30:00.000Z",
         "updatedAt": "2026-10-15T14:20:00.000Z"
       }
-    ]
+    ],
+    "pagination": { "page": 1, "limit": 20, "total": 12, "totalPages": 1 }
   }
 }
 ```
 
-Perhatikan: `id` (bukan `_id`), dan `branch` berbentuk `{id, name}` — **bentuknya identik dengan response `GET /profile`**, jadi model Dart bisa dipakai bersama (lihat `PROFILE-MOBILE-API-INTEGRATION.md` §1).
+Perhatikan: `id` (bukan `_id`), dan `branch` berbentuk `{id, name}` — **bentuknya identik dengan response `GET /profile`**, jadi model Dart bisa dipakai bersama (lihat `PROFILE-MOBILE-API-INTEGRATION.md` §1). Ketidakkonsistenan `id` vs `_id` ini **hanya berlaku untuk item di dalam array**; objek `pagination` sendiri bentuknya sama di seluruh backend.
 
 ## 2.2. POST /api/v1/users — Tambah Akun Staf
 
@@ -197,7 +232,14 @@ Body: `{ "status": "ACTIVE" }` atau `{ "status": "INACTIVE" }` — **enum string
 
 ## 3.1. GET /api/v1/services — List Layanan
 
-Tanpa query param, **tanpa pagination**, terurut `name`.
+### Query Params
+
+| Param | Tipe | Default | Catatan |
+|---|---|---|---|
+| `page` | `integer` | `1` | |
+| `limit` | `integer` | `20` | Maks `100` |
+
+Tidak ada param search/filter. Terurut `name` (tie-breaker `_id`).
 
 ⚠️ **Isi daftarnya berbeda tergantung role, dan ini dipaksa server-side:**
 
@@ -207,6 +249,8 @@ Tanpa query param, **tanpa pagination**, terurut `name`.
 | **AGENT** | **Hanya** layanan `isActive: true` |
 
 AGENT tidak bisa memaksa melihat layanan nonaktif lewat query apa pun. Jadi di layar "pilih layanan" saat buat transaksi, AGENT otomatis hanya melihat yang valid dipakai — tidak perlu filter tambahan di client.
+
+**`pagination.total` ikut mengikuti filter role tersebut**: untuk AGENT, `total` adalah jumlah layanan **aktif** saja, bukan jumlah seluruh layanan. Jadi `total` selalu cocok dengan apa yang bisa ditelusuri role itu — tidak akan ada halaman yang "hilang" karena difilter.
 
 ```json
 {
@@ -226,10 +270,17 @@ AGENT tidak bisa memaksa melihat layanan nonaktif lewat query apa pun. Jadi di l
         "createdAt": "2026-01-05T04:00:00.000Z",
         "updatedAt": "2026-09-20T07:30:00.000Z"
       }
-    ]
+    ],
+    "pagination": { "page": 1, "limit": 20, "total": 8, "totalPages": 1 }
   }
 }
 ```
+
+### ⚠️ Ini Endpoint Paling Rawan dari Perubahan Pagination
+
+Layar **"pilih layanan" saat AGENT membuat transaksi** memanggil endpoint ini dan butuh daftar yang bisa dipilih seluruhnya. Dengan default `limit: 20`, bisnis dengan lebih dari 20 layanan aktif akan punya layanan yang **tidak bisa dipilih sama sekali** — tanpa error, tanpa indikasi apa pun di UI.
+
+Ini bukan hipotetis: katalog layanan barbershop (potong, cuci, cat, perawatan, paket, variasi harga anak/dewasa) gampang melewati 20. Perbaiki layar itu **sebelum** backend ini dirilis: kirim `limit=100`, dan kalau `totalPages > 1` ambil halaman berikutnya sampai habis sebelum membangun daftar pilihan.
 
 ## 3.2. GET /api/v1/services/:id — Detail Layanan
 
@@ -335,9 +386,13 @@ Ketiga status selain `ACTIVE` memicu `402` di seluruh endpoint `ENFORCED`.
 |---|---|---|
 | `page` | `1` | |
 | `limit` | `20` (maks 100) | |
-| `status` | — | ⚠️ **Diterima tapi TIDAK BERFUNGSI — lihat di bawah** |
+| `status` | — | `PENDING\|PAID\|FAILED\|EXPIRED\|REFUNDED`. **Sudah berfungsi sejak 2026-10-19** — lihat di bawah |
 
-🐛 **Bug yang dikonfirmasi: filter `status` tidak pernah diterapkan.** Parameternya divalidasi (nilai di luar enum ditolak `400`), tapi nilainya tidak pernah diteruskan ke query database — hasilnya selalu seluruh invoice apa pun statusnya. **Jangan bangun filter status yang mengandalkan server**; filter di sisi Flutter atas hasil yang diterima, atau jangan tampilkan filter itu dulu.
+✅ **Filter `status` sekarang benar-benar diterapkan.** *(Sebelum 2026-10-19 parameter ini divalidasi lalu dibuang — `?status=PAID` membalas `200` berisi invoice semua status. Dokumen ini dulu menyarankan memfilter di sisi Flutter; saran itu sudah tidak berlaku.)*
+
+Konsekuensi yang perlu diperhatikan kalau app sudah punya workaround filter-di-client: **`pagination.total` sekarang ikut mengikuti filter `status`.** Jadi `?status=PAID` mengembalikan `total` = jumlah invoice `PAID` saja, bukan jumlah seluruh invoice. Kalau app memfilter ulang hasilnya di client, hasilnya tidak salah — cuma pekerjaan ganda. Yang **akan** salah adalah kalau app memakai `total` dari request ber-filter sebagai "jumlah seluruh invoice" untuk ditampilkan di UI.
+
+Nilai di luar enum tetap ditolak `400` seperti sebelumnya.
 
 ```json
 {
@@ -362,14 +417,27 @@ Ketiga status selain `ACTIVE` memicu `402` di seluruh endpoint `ENFORCED`.
         "expiresAt": "2026-11-08T00:00:00.000Z"
       }
     ],
-    "pagination": { "page": 1, "limit": 20, "total": 4, "pages": 1 }
+    "pagination": { "page": 1, "limit": 20, "total": 4, "totalPages": 1, "pages": 1 }
   }
 }
 ```
 
-⚠️ **Pagination di sini pakai key `pages`, bukan `totalPages`** seperti Transaksi/Inventaris. Inkonsistensi nyata di backend, bukan salah ketik dokumen — model Dart untuk pagination tidak bisa dipakai bersama tanpa penyesuaian.
+### `totalPages` dan `pages` — Dua Key, Nilai Sama
 
-Kalau HOST belum punya langganan sama sekali, response tetap `200` dengan `invoices: []` dan `pagination: {page:1, limit:20, total:0, pages:0}`.
+Endpoint ini mengirim **keduanya**, dan nilainya selalu identik:
+
+| Key | Status | Pakai? |
+|---|---|---|
+| `totalPages` | Standar, sama seperti seluruh endpoint lain | ✅ **Pakai ini** |
+| `pages` | Nama lama, **deprecated** | ❌ Jangan dipakai di kode baru |
+
+*Dulu endpoint ini **hanya** mengirim `pages`, sehingga model Dart pagination tidak bisa dipakai bersama modul lain. `totalPages` ditambahkan 2026-10-19 tanpa menghapus `pages`, supaya build mobile yang sudah beredar tidak pecah saat backend di-deploy.* `pages` akan dihapus setelah app bermigrasi — **migrasikan sekarang**, jangan tunggu sampai hilang. Setelah itu model `Pagination` bersama di `AUTH-MOBILE-API-INTEGRATION.md` §2.1.6 bisa dipakai di sini tanpa penyesuaian apa pun.
+
+### Kalau HOST Belum Punya Langganan
+
+Response tetap `200` dengan `invoices: []`. Objek `pagination`-nya sekarang **memantulkan `page`/`limit` yang app kirim** — mis. `?limit=50` membalas `{page:1, limit:50, total:0, totalPages:0, pages:0}`.
+
+*Dulu jalur ini mengembalikan `limit: 20` hardcode berapa pun yang diminta, dan — lebih menyesatkan — `?limit=abc` dibalas `200` di jalur ini padahal `400` di jalur normal. Keduanya sudah diperbaiki: validasi query sekarang berjalan lebih dulu, jadi `400` untuk param tidak valid berlaku konsisten entah HOST punya langganan atau tidak.*
 
 ## 4.4. GET /api/v1/subscription/invoices/:id — Detail Invoice
 
@@ -403,10 +471,13 @@ Perilaku yang *seharusnya* (setelah diperbaiki nanti): `200` dengan `{invoice}`,
 
 - **Jangan pakai satu widget "toggle status" generik untuk keempat resource** — Cabang & Karyawan pakai `{status: "ACTIVE"|"INACTIVE"}`, Layanan pakai `{isActive: bool}`. Bikin pemetaan eksplisit per resource.
 - **Model Dart tidak bisa seragam soal id** — Karyawan pakai `id`, tiga lainnya `_id`. Model Karyawan bisa di-reuse dari `/profile` (bentuknya identik).
-- **Tiga list tanpa pagination** (Cabang/Karyawan/Layanan) — search & filter harus di sisi client. Aman untuk skala puluhan; kalau staf/layanan sudah ratusan, pertimbangkan minta endpoint berpaginasi ke backend.
+- **‼️ Keempat list sekarang berpaginasi, default 20 baris** (§0 poin 3) — dan ketiga di antaranya (Cabang/Karyawan/Layanan) **dulu mengembalikan seluruh data**. Audit setiap layar di tab ini sebelum rilis; tidak ada error yang akan memberi tahu kalau daftarnya terpotong.
+- **Prioritas tertinggi: picker layanan di alur buat transaksi** (§3.1) dan **picker cabang di form karyawan** (§1.1). Dua layar ini butuh daftar lengkap untuk berfungsi benar — kalau terpotong, ada pilihan yang tidak akan pernah bisa dipilih user. Kirim `limit=100` + ambil halaman lanjutan kalau `totalPages > 1`.
+- **Search/filter staf & layanan masih client-side, tapi sekarang cuma atas data yang sudah di-fetch** — kalau mau tetap memfilter seluruh data, fetch semua halaman dulu (loop sampai `page > totalPages`) baru filter.
+- **Satu model `Pagination` untuk keempat list** — lihat `AUTH-MOBILE-API-INTEGRATION.md` §2.1.6. Abaikan field `pages` di invoice (§4.3), pakai `totalPages`.
 - **Form tambah karyawan: role menentukan field cabang** (§2.2) — AGENT wajib cabang, HOST wajib tanpa cabang. Validasi di client dulu supaya user tidak kena 400 yang membingungkan.
 - **Form layanan: satu input porsi bagi hasil, bukan dua** (§3.3) — hitung sisanya otomatis supaya total selalu 100.
 - **Jangan bikin layar reset password karyawan** (§2.4) — endpoint-nya tidak ada sama sekali.
-- **Jangan panggil `GET /subscription/invoices/:id`** (§4.4) — sedang rusak; render detail dari data list.
-- **Jangan andalkan filter `status` di list invoice** (§4.3) — diabaikan server, filter di client.
+- **Jangan panggil `GET /subscription/invoices/:id`** (§4.4) — sedang rusak; render detail dari data list. *(Masih berlaku per 2026-10-19 — diverifikasi ulang ke kode, bug populate-nya belum diperbaiki.)*
+- **Filter `status` di list invoice sudah bisa diandalkan** (§4.3) — kirim ke server, jangan filter di client lagi. Tapi ingat `total` ikut mengecil mengikuti filter.
 - **Tangani `subscription: null`** sebagai keadaan normal, bukan error (§4.2).

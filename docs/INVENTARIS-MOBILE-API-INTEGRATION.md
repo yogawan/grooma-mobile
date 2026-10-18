@@ -29,10 +29,14 @@
 | `page` | `integer` | `1` | |
 | `limit` | `integer` | `20` | Maks `100` |
 | `branchId` | `string` | — | **HOST only** — diabaikan untuk AGENT |
-| `search` | `string` | — | Cocok ke **`name`** (bukan `itemCode`), case-insensitive, substring |
+| `search` | `string` | — | Cocok ke **`name`** (bukan `itemCode`), case-insensitive, substring. ⚠️ `?search=` **kosong ditolak `400`** di endpoint ini — kirim param-nya hanya kalau ada isinya (beda dari `/customers` yang memperlakukan kosong sebagai "tanpa filter") |
 | `lowStockOnly` | `boolean` | — | `true` = hanya item dengan `quantity <= minimumStock` |
 
 Terurut alfabetis berdasarkan `name` (bukan terbaru, bukan quantity).
+
+> **Kontrak pagination endpoint ini tidak berubah** pada pembaruan 2026-10-19 — `page`/`limit` dan `{page, limit, total, totalPages}` sudah sesuai standar sejak awal, dan sekarang standar itu berlaku di seluruh backend. Acuan lengkapnya (perilaku tepi, `page` di luar rentang, model Dart bersama) ada di `AUTH-MOBILE-API-INTEGRATION.md` §2.1.
+>
+> **Satu hal yang berubah diam-diam, dan ini perbaikan:** urutannya sekarang **stabil**. Sebelumnya sort-nya hanya `name`, dan karena nama item duplikat antar cabang itu normal, dua item bernama sama bisa bertukar posisi antar request — sehingga menelusuri halaman bisa **melewatkan** satu item atau **menampilkannya dua kali**. Dari seluruh endpoint berpaginasi, endpoint inilah yang paling terdampak. Kalau app punya dedup by `_id` saat append halaman, workaround itu tidak lagi diperlukan (membiarkannya juga tidak merusak).
 
 ### Response `200 OK`
 
@@ -176,7 +180,9 @@ Setelah soft-delete:
 
 ### Query Params
 
-Hanya `page`/`limit` (maks 100) — tidak ada filter `movementType` atau tanggal. Terurut dari yang terbaru.
+Hanya `page`/`limit` (default `1`/`20`, maks `100`) — tidak ada filter `movementType` atau tanggal. Terurut dari yang terbaru (`createdAt` desc, tie-breaker `_id`).
+
+> Urutan di sini juga jadi stabil pada pembaruan 2026-10-19 — relevan karena beberapa movement dari satu batch bisa punya `createdAt` yang sama persis.
 
 ### Response `200 OK`
 
