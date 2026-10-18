@@ -11,7 +11,7 @@ class AuthService {
   Future<User> login(String username, String password) async {
     try {
       final response = await _dio.post<Map<String, dynamic>>(
-        '/api/v1/auth/login',
+        '/auth/login',
         data: {'username': username.trim().toLowerCase(), 'password': password},
       );
       return _userFrom(response.data);
@@ -25,7 +25,7 @@ class AuthService {
   /// there is no valid session.
   Future<User> me() async {
     try {
-      final response = await _dio.get<Map<String, dynamic>>('/api/v1/auth/me');
+      final response = await _dio.get<Map<String, dynamic>>('/auth/me');
       return _userFrom(response.data);
     } on DioException catch (e) {
       throw mapDioError(e);
@@ -34,7 +34,7 @@ class AuthService {
 
   Future<void> logout() async {
     try {
-      await _dio.post('/api/v1/auth/logout');
+      await _dio.post('/auth/logout');
     } on DioException catch (e) {
       throw mapDioError(e);
     }

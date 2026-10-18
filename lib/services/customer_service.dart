@@ -12,21 +12,27 @@ class CustomerService {
 
   final Dio _dio;
 
-  /// No pagination on this endpoint at all (doc §2) — omitting
-  /// `search` returns the entire customer base in one response. The UI
-  /// is responsible for not calling this without a non-trivial query;
-  /// this method doesn't second-guess that policy itself.
-  Future<List<Customer>> search({String? search}) async {
+  /// Paginated like every other list endpoint now (AUTH doc §2.1) —
+  /// default 20 rows, so omitting `search` no longer dumps the entire
+  /// customer base in one response the way it used to. The UI is still
+  /// responsible for not calling this without a non-trivial query.
+  Future<CustomerPage> search({
+    String? search,
+    int page = 1,
+    int limit = 20,
+  }) async {
     try {
       final response = await _dio.get<Map<String, dynamic>>(
-        '/api/v1/customers',
+        '/customers',
         queryParameters: {
+          'page': page,
+          'limit': limit,
           if (search != null && search.isNotEmpty) 'search': search,
         },
       );
-      return (response.data!['data']['customers'] as List)
-          .map((e) => Customer.fromJson(e as Map<String, dynamic>))
-          .toList();
+      return CustomerPage.fromJson(
+        response.data!['data'] as Map<String, dynamic>,
+      );
     } on DioException catch (e) {
       throw mapDioError(e);
     }
@@ -47,7 +53,7 @@ class CustomerService {
   }) async {
     try {
       final response = await _dio.post<Map<String, dynamic>>(
-        '/api/v1/customers',
+        '/customers',
         data: {
           'name': name,
           'phone': ?phone,
@@ -66,9 +72,7 @@ class CustomerService {
 
   Future<Customer> detail(String id) async {
     try {
-      final response = await _dio.get<Map<String, dynamic>>(
-        '/api/v1/customers/$id',
-      );
+      final response = await _dio.get<Map<String, dynamic>>('/customers/$id');
       return _customerFrom(response.data);
     } on DioException catch (e) {
       throw mapDioError(e);
@@ -91,7 +95,7 @@ class CustomerService {
   }) async {
     try {
       final response = await _dio.patch<Map<String, dynamic>>(
-        '/api/v1/customers/$id',
+        '/customers/$id',
         data: {
           'name': ?name,
           'phone': ?phone,
@@ -113,7 +117,7 @@ class CustomerService {
   Future<Customer> setActive(String id, {required bool isActive}) async {
     try {
       final response = await _dio.patch<Map<String, dynamic>>(
-        '/api/v1/customers/$id/status',
+        '/customers/$id/status',
         data: {'isActive': isActive},
       );
       return _customerFrom(response.data);

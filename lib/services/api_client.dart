@@ -19,7 +19,7 @@ class ApiClient {
   static Future<ApiClient> create() async {
     const baseUrl = String.fromEnvironment(
       'BASE_URL',
-      defaultValue: 'http://localhost:3000',
+      defaultValue: 'https://grooma-core-service.vercel.app',
     );
 
     final appDir = await getApplicationDocumentsDirectory();
@@ -29,7 +29,7 @@ class ApiClient {
 
     final dio = Dio(
       BaseOptions(
-        baseUrl: baseUrl,
+        baseUrl: '$baseUrl/api/v1',
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',

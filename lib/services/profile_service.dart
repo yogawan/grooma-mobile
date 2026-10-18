@@ -13,7 +13,7 @@ class ProfileService {
 
   Future<UserProfile> getProfile() async {
     try {
-      final response = await _dio.get<Map<String, dynamic>>('/api/v1/profile');
+      final response = await _dio.get<Map<String, dynamic>>('/profile');
       return _userFrom(response.data);
     } on DioException catch (e) {
       throw mapDioError(e);
@@ -28,7 +28,7 @@ class ProfileService {
   }) async {
     try {
       final response = await _dio.patch<Map<String, dynamic>>(
-        '/api/v1/profile',
+        '/profile',
         data: {'name': name, 'phone': phone},
       );
       return _userFrom(response.data);

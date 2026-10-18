@@ -1,3 +1,5 @@
+import 'pagination.dart';
+
 enum CustomerGender {
   male,
   female,
@@ -108,6 +110,27 @@ class Customer {
       notes: json['notes'] as String?,
       createdAt: DateTime.parse(json['createdAt'] as String),
       updatedAt: DateTime.parse(json['updatedAt'] as String),
+    );
+  }
+}
+
+/// `GET /customers` result (AUTH doc §2.1.2/§2.1.4) — paginated like
+/// every other list endpoint now, default 20 rows, no longer the full
+/// cross-branch customer base in one response.
+class CustomerPage {
+  const CustomerPage({required this.customers, required this.pagination});
+
+  final List<Customer> customers;
+  final Pagination pagination;
+
+  factory CustomerPage.fromJson(Map<String, dynamic> json) {
+    return CustomerPage(
+      customers: (json['customers'] as List)
+          .map((e) => Customer.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      pagination: Pagination.fromJson(
+        json['pagination'] as Map<String, dynamic>,
+      ),
     );
   }
 }

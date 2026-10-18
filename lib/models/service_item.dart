@@ -1,3 +1,5 @@
+import 'pagination.dart';
+
 /// `ownerPercentage + employeePercentage` must total exactly 100
 /// (Kelola doc §3.3) — enforced server-side, but the form should only
 /// ever expose one slider (owner share) and derive the other, so the
@@ -72,6 +74,26 @@ class ServiceItem {
       isActive: json['isActive'] as bool,
       createdAt: DateTime.parse(json['createdAt'] as String),
       updatedAt: DateTime.parse(json['updatedAt'] as String),
+    );
+  }
+}
+
+/// `GET /services` result (AUTH doc §2.1.2/§2.1.4) — paginated now,
+/// default 20 rows, no longer the full catalog in one response.
+class ServicePage {
+  const ServicePage({required this.services, required this.pagination});
+
+  final List<ServiceItem> services;
+  final Pagination pagination;
+
+  factory ServicePage.fromJson(Map<String, dynamic> json) {
+    return ServicePage(
+      services: (json['services'] as List)
+          .map((e) => ServiceItem.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      pagination: Pagination.fromJson(
+        json['pagination'] as Map<String, dynamic>,
+      ),
     );
   }
 }

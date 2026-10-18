@@ -14,12 +14,17 @@ class ServiceCatalogService {
 
   final Dio _dio;
 
-  Future<List<ServiceItem>> list() async {
+  /// Paginated now (AUTH doc §2.1.4) — default 20 rows, no longer the
+  /// full catalog in one response.
+  Future<ServicePage> list({int page = 1, int limit = 20}) async {
     try {
-      final response = await _dio.get<Map<String, dynamic>>('/api/v1/services');
-      return (response.data!['data']['services'] as List)
-          .map((e) => ServiceItem.fromJson(e as Map<String, dynamic>))
-          .toList();
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/services',
+        queryParameters: {'page': page, 'limit': limit},
+      );
+      return ServicePage.fromJson(
+        response.data!['data'] as Map<String, dynamic>,
+      );
     } on DioException catch (e) {
       throw mapDioError(e);
     }
@@ -31,9 +36,7 @@ class ServiceCatalogService {
   /// `isActive` on the result.
   Future<ServiceItem> detail(String id) async {
     try {
-      final response = await _dio.get<Map<String, dynamic>>(
-        '/api/v1/services/$id',
-      );
+      final response = await _dio.get<Map<String, dynamic>>('/services/$id');
       return _serviceFrom(response.data);
     } on DioException catch (e) {
       throw mapDioError(e);
@@ -54,7 +57,7 @@ class ServiceCatalogService {
   }) async {
     try {
       final response = await _dio.post<Map<String, dynamic>>(
-        '/api/v1/services',
+        '/services',
         data: {
           'serviceCode': serviceCode,
           'name': name,
@@ -86,7 +89,7 @@ class ServiceCatalogService {
   }) async {
     try {
       final response = await _dio.patch<Map<String, dynamic>>(
-        '/api/v1/services/$id',
+        '/services/$id',
         data: {
           'name': ?name,
           'description': ?description,
@@ -108,7 +111,7 @@ class ServiceCatalogService {
   Future<ServiceItem> setActive(String id, bool isActive) async {
     try {
       final response = await _dio.patch<Map<String, dynamic>>(
-        '/api/v1/services/$id/status',
+        '/services/$id/status',
         data: {'isActive': isActive},
       );
       return _serviceFrom(response.data);

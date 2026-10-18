@@ -1,3 +1,4 @@
+import 'pagination.dart';
 import 'user.dart';
 
 enum UserStatus {
@@ -59,6 +60,26 @@ class UserProfile {
       status: UserStatus.fromApi(json['status'] as String),
       createdAt: DateTime.parse(json['createdAt'] as String),
       updatedAt: DateTime.parse(json['updatedAt'] as String),
+    );
+  }
+}
+
+/// `GET /users` result (AUTH doc §2.1.2/§2.1.4) — paginated now, default
+/// 20 rows, no longer the full staff roster in one response.
+class StaffPage {
+  const StaffPage({required this.users, required this.pagination});
+
+  final List<UserProfile> users;
+  final Pagination pagination;
+
+  factory StaffPage.fromJson(Map<String, dynamic> json) {
+    return StaffPage(
+      users: (json['users'] as List)
+          .map((e) => UserProfile.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      pagination: Pagination.fromJson(
+        json['pagination'] as Map<String, dynamic>,
+      ),
     );
   }
 }

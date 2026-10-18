@@ -6,21 +6,44 @@ import 'api_exception.dart';
 /// `/api/v1/branches`. Read is HOST+AGENT (AGENT only ever gets their
 /// own branch back), write is HOST only. `ENFORCED` gating applies to
 /// both roles (Kelola doc §0) — unlike Services' read side, there's no
-/// AGENT exemption here. No pagination on the list endpoint at all.
+/// AGENT exemption here. Paginated like every other list endpoint
+/// (AUTH doc §2.1).
 class BranchService {
   BranchService(this._dio);
 
   final Dio _dio;
 
-  Future<List<ManagedBranch>> list() async {
+  /// Paginated now (AUTH doc §2.1.4) — default 20 rows, no longer the
+  /// full branch list in one response.
+  Future<BranchPage> list({int page = 1, int limit = 20}) async {
     try {
-      final response = await _dio.get<Map<String, dynamic>>('/api/v1/branches');
-      return (response.data!['data']['branches'] as List)
-          .map((e) => ManagedBranch.fromJson(e as Map<String, dynamic>))
-          .toList();
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/branches',
+        queryParameters: {'page': page, 'limit': limit},
+      );
+      return BranchPage.fromJson(
+        response.data!['data'] as Map<String, dynamic>,
+      );
     } on DioException catch (e) {
       throw mapDioError(e);
     }
+  }
+
+  /// For pickers that need the complete branch list (e.g. the branch
+  /// dropdown on the staff form) rather than one page of it — AUTH doc
+  /// §2.1.4 flags exactly this kind of picker as the most likely to
+  /// silently break now that `/branches` defaults to 20 rows. Walks
+  /// pages at the max `limit` (100) until `totalPages` is exhausted.
+  Future<List<ManagedBranch>> listAll() async {
+    final branches = <ManagedBranch>[];
+    var page = 1;
+    while (true) {
+      final result = await list(page: page, limit: 100);
+      branches.addAll(result.branches);
+      if (!result.pagination.hasNextPage) break;
+      page++;
+    }
+    return branches;
   }
 
   /// HOST only. `branchCode` is immutable once created (doc §1.2).
@@ -33,7 +56,7 @@ class BranchService {
   }) async {
     try {
       final response = await _dio.post<Map<String, dynamic>>(
-        '/api/v1/branches',
+        '/branches',
         data: {
           'branchCode': branchCode,
           'name': name,
@@ -50,9 +73,7 @@ class BranchService {
 
   Future<ManagedBranch> detail(String id) async {
     try {
-      final response = await _dio.get<Map<String, dynamic>>(
-        '/api/v1/branches/$id',
-      );
+      final response = await _dio.get<Map<String, dynamic>>('/branches/$id');
       return _branchFrom(response.data);
     } on DioException catch (e) {
       throw mapDioError(e);
@@ -69,7 +90,7 @@ class BranchService {
   }) async {
     try {
       final response = await _dio.patch<Map<String, dynamic>>(
-        '/api/v1/branches/$id',
+        '/branches/$id',
         data: {
           'name': ?name,
           'address': ?address,
@@ -90,7 +111,7 @@ class BranchService {
   Future<ManagedBranch> setStatus(String id, BranchStatus status) async {
     try {
       final response = await _dio.patch<Map<String, dynamic>>(
-        '/api/v1/branches/$id/status',
+        '/branches/$id/status',
         data: {'status': status.apiValue},
       );
       return _branchFrom(response.data);

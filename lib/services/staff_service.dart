@@ -19,12 +19,15 @@ class StaffService {
 
   final Dio _dio;
 
-  Future<List<UserProfile>> list() async {
+  /// Paginated now (AUTH doc §2.1.4) — default 20 rows, no longer the
+  /// full staff roster in one response.
+  Future<StaffPage> list({int page = 1, int limit = 20}) async {
     try {
-      final response = await _dio.get<Map<String, dynamic>>('/api/v1/users');
-      return (response.data!['data']['users'] as List)
-          .map((e) => UserProfile.fromJson(e as Map<String, dynamic>))
-          .toList();
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/users',
+        queryParameters: {'page': page, 'limit': limit},
+      );
+      return StaffPage.fromJson(response.data!['data'] as Map<String, dynamic>);
     } on DioException catch (e) {
       throw mapDioError(e);
     }
@@ -44,7 +47,7 @@ class StaffService {
   }) async {
     try {
       final response = await _dio.post<Map<String, dynamic>>(
-        '/api/v1/users',
+        '/users',
         data: {
           'username': username,
           'password': password,
@@ -62,9 +65,7 @@ class StaffService {
 
   Future<UserProfile> detail(String id) async {
     try {
-      final response = await _dio.get<Map<String, dynamic>>(
-        '/api/v1/users/$id',
-      );
+      final response = await _dio.get<Map<String, dynamic>>('/users/$id');
       return _staffFrom(response.data);
     } on DioException catch (e) {
       throw mapDioError(e);
@@ -85,7 +86,7 @@ class StaffService {
   }) async {
     try {
       final response = await _dio.patch<Map<String, dynamic>>(
-        '/api/v1/users/$id',
+        '/users/$id',
         data: {
           'name': ?name,
           if (role != null) 'role': role.apiValue,
@@ -104,7 +105,7 @@ class StaffService {
   Future<UserProfile> setStatus(String id, UserStatus status) async {
     try {
       final response = await _dio.patch<Map<String, dynamic>>(
-        '/api/v1/users/$id/status',
+        '/users/$id/status',
         data: {'status': status.apiValue},
       );
       return _staffFrom(response.data);

@@ -1,3 +1,5 @@
+import 'pagination.dart';
+
 enum BranchStatus {
   active,
   inactive;
@@ -56,6 +58,26 @@ class ManagedBranch {
       status: BranchStatus.fromApi(json['status'] as String),
       createdAt: DateTime.parse(json['createdAt'] as String),
       updatedAt: DateTime.parse(json['updatedAt'] as String),
+    );
+  }
+}
+
+/// `GET /branches` result (AUTH doc §2.1.2/§2.1.4) — paginated now,
+/// default 20 rows, no longer the full branch list in one response.
+class BranchPage {
+  const BranchPage({required this.branches, required this.pagination});
+
+  final List<ManagedBranch> branches;
+  final Pagination pagination;
+
+  factory BranchPage.fromJson(Map<String, dynamic> json) {
+    return BranchPage(
+      branches: (json['branches'] as List)
+          .map((e) => ManagedBranch.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      pagination: Pagination.fromJson(
+        json['pagination'] as Map<String, dynamic>,
+      ),
     );
   }
 }

@@ -23,4 +23,9 @@ class Pagination {
       totalPages: (json['totalPages'] ?? json['pages']) as int,
     );
   }
+
+  /// Use this instead of comparing against `total` directly (AUTH doc
+  /// §2.1.6) — `total` ignores `limit`, so it alone can't tell you
+  /// whether another page exists.
+  bool get hasNextPage => page < totalPages;
 }
