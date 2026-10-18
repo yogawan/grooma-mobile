@@ -29,16 +29,28 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
+  // Backend maxes (dashboard doc §3.3/§3.4/§3.6) — "Lihat lebih banyak"
+  // jumps straight to these rather than incrementing, since there's no
+  // `page` on these endpoints to step through (§0: ranking/worklist
+  // depth only, not real pagination).
+  static const _maxServicesLimit = 50;
+  static const _maxAgentsLimit = 100;
+  static const _maxInventoryLimit = 100;
+
   DashboardPeriod _period = DashboardPeriod.month;
   _LoadState _state = _LoadState.loading;
   String? _errorMessage;
 
+  int _servicesLimit = 10;
+  int _agentsLimit = 50;
+  int _inventoryLimit = 20;
+
   DashboardSummary? _summary;
   RevenueData? _revenue;
-  List<ServiceStat>? _services;
-  List<AgentStat>? _agents;
+  ServiceStatsResult? _services;
+  AgentStatsResult? _agents;
   TransactionStats? _transactions;
-  List<InventoryLowStockItem>? _inventory;
+  LowStockResult? _inventory;
 
   @override
   void initState() {
@@ -59,12 +71,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final summary = await widget.dashboardService.summary(period: _period);
 
       final revenueFuture = widget.dashboardService.revenue(period: _period);
-      final servicesFuture = widget.dashboardService.services(period: _period);
-      final agentsFuture = widget.dashboardService.agents(period: _period);
+      final servicesFuture = widget.dashboardService.services(
+        period: _period,
+        limit: _servicesLimit,
+      );
+      final agentsFuture = widget.dashboardService.agents(
+        period: _period,
+        limit: _agentsLimit,
+      );
       final transactionsFuture = widget.dashboardService.transactionsStats(
         period: _period,
       );
-      final inventoryFuture = widget.dashboardService.inventory();
+      final inventoryFuture = widget.dashboardService.inventory(
+        limit: _inventoryLimit,
+      );
 
       final revenue = await revenueFuture;
       final services = await servicesFuture;
@@ -89,6 +109,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
         _errorMessage = e.message;
       });
     }
+  }
+
+  void _showMoreServices() {
+    _servicesLimit = _maxServicesLimit;
+    _load();
+  }
+
+  void _showMoreAgents() {
+    _agentsLimit = _maxAgentsLimit;
+    _load();
+  }
+
+  void _showMoreInventory() {
+    _inventoryLimit = _maxInventoryLimit;
+    _load();
   }
 
   @override
@@ -236,49 +271,71 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildServices(BuildContext context) {
-    final services = _services!;
+    final result = _services!;
+    final services = result.services;
     return _card(
       context,
       title: 'Top Layanan',
-      child: services.isEmpty
-          ? _emptyText('Belum ada data layanan.')
-          : Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                for (var i = 0; i < services.length; i++)
-                  _kvRow(
-                    context,
-                    '${i + 1}. ${services[i].serviceName}',
-                    '${formatRupiah(services[i].revenue)} (${services[i].count}x)',
-                  ),
-              ],
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (services.isEmpty)
+            _emptyText('Belum ada data layanan.')
+          else
+            for (var i = 0; i < services.length; i++)
+              _kvRow(
+                context,
+                '${i + 1}. ${services[i].serviceName}',
+                '${formatRupiah(services[i].revenue)} (${services[i].count}x)',
+              ),
+          if (result.meta.truncated)
+            _truncationNotice(
+              context,
+              text:
+                  'Menampilkan ${services.length} dari ${result.meta.total} layanan',
+              onSeeMore: _servicesLimit < _maxServicesLimit
+                  ? _showMoreServices
+                  : null,
             ),
+        ],
+      ),
     );
   }
 
   Widget _buildAgents(BuildContext context) {
-    final agents = _agents!;
+    final result = _agents!;
+    final agents = result.agents;
     final isAgent = widget.user.role == UserRole.agent;
     return _card(
       context,
       title: 'Performa Agent',
-      child: agents.isEmpty
-          ? _emptyText('Belum ada data agent.')
-          : Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                for (var i = 0; i < agents.length; i++)
-                  _kvRow(
-                    context,
-                    // `AgentStat` deliberately has no real name (see
-                    // model doc comment) — AGENT only ever sees itself.
-                    isAgent
-                        ? 'Anda'
-                        : 'Agent #${agents[i].id.substring(agents[i].id.length - 6).toUpperCase()}',
-                    '${formatRupiah(agents[i].totalRevenue)} (${agents[i].transactionCount}x)',
-                  ),
-              ],
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (agents.isEmpty)
+            _emptyText('Belum ada data agent.')
+          else
+            for (var i = 0; i < agents.length; i++)
+              _kvRow(
+                context,
+                // `AgentStat` deliberately has no real name (see
+                // model doc comment) — AGENT only ever sees itself.
+                isAgent
+                    ? 'Anda'
+                    : 'Agent #${agents[i].id.substring(agents[i].id.length - 6).toUpperCase()}',
+                '${formatRupiah(agents[i].totalRevenue)} (${agents[i].transactionCount}x)',
+              ),
+          if (result.meta.truncated)
+            _truncationNotice(
+              context,
+              text:
+                  'Menampilkan ${agents.length} dari ${result.meta.total} agent',
+              onSeeMore: _agentsLimit < _maxAgentsLimit
+                  ? _showMoreAgents
+                  : null,
             ),
+        ],
+      ),
     );
   }
 
@@ -319,25 +376,65 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildInventory(BuildContext context) {
-    final items = _inventory!;
+    final result = _inventory!;
+    final items = result.items;
+    // This is a restock worklist, not a top-N ranking — unlike
+    // Services/Agents, `meta.total` is always worth showing here, not
+    // just when truncated, since a hidden count is misleading rather
+    // than just incomplete (dashboard doc §3.6 "‼️").
     return _card(
       context,
-      title: 'Stok Menipis',
-      child: items.isEmpty
-          ? _emptyText('Tidak ada stok menipis.')
-          : Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: items
-                  .map(
-                    (i) => _kvRow(
-                      context,
-                      '${i.name} (${i.branchName})',
-                      '${i.quantity}/${i.minimumStock}',
-                      valueColor: AppColors.warning,
-                    ),
-                  )
-                  .toList(),
+      title: 'Stok Menipis (${result.meta.total})',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (items.isEmpty)
+            _emptyText('Tidak ada stok menipis.')
+          else
+            for (final i in items)
+              _kvRow(
+                context,
+                '${i.name} (${i.branchName})',
+                '${i.quantity}/${i.minimumStock}',
+                valueColor: AppColors.warning,
+              ),
+          if (result.meta.truncated)
+            _truncationNotice(
+              context,
+              text: '${items.length} dari ${result.meta.total} ditampilkan',
+              onSeeMore: _inventoryLimit < _maxInventoryLimit
+                  ? _showMoreInventory
+                  : null,
             ),
+        ],
+      ),
+    );
+  }
+
+  Widget _truncationNotice(
+    BuildContext context, {
+    required String text,
+    required VoidCallback? onSeeMore,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(
+            child: Text(
+              text,
+              style: Theme.of(context).textTheme.bodySmall
+                  ?.copyWith(color: AppColors.secondaryText),
+            ),
+          ),
+          if (onSeeMore != null)
+            TextButton(
+              onPressed: onSeeMore,
+              child: const Text('Lihat lebih banyak'),
+            ),
+        ],
+      ),
     );
   }
 

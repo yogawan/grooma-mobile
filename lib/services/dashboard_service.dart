@@ -11,6 +11,15 @@ import 'api_exception.dart';
 /// `branchId`/`agentId` HOST filters and the `compare`/`threshold` params
 /// are intentionally not exposed yet — scope is always whatever the
 /// session resolves to by default, matching the "simple UI first" pass.
+///
+/// Every query map here is hand-built per method, deliberately — this
+/// module's schema is strict and `page`/`limit` are NOT interchangeable
+/// across its 6 endpoints (dashboard doc §2): `limit` is only valid on
+/// `services`/`agents`/`inventory`, `page` is invalid everywhere here
+/// (there's no pagination concept, only a ranking/worklist depth — see
+/// [DashboardMeta]), and sending either where it doesn't belong is a
+/// `400`. Don't introduce a shared "attach page/limit" request helper
+/// that would apply to this service too.
 class DashboardService {
   DashboardService(this._dio);
 
@@ -19,57 +28,65 @@ class DashboardService {
   Future<DashboardSummary> summary({
     DashboardPeriod period = DashboardPeriod.month,
   }) async {
-    final data = await _getData('/api/v1/dashboard/summary', {
+    final data = await _getData('/dashboard/summary', {
       'period': period.apiValue,
     });
     return DashboardSummary.fromJson(data['summary'] as Map<String, dynamic>);
   }
 
+  /// `from`/`to` (and the new too-wide-a-range `400`, doc §3.2) aren't
+  /// exposed here — this app only ever sends `period` presets, whose
+  /// default ranges are always narrow enough to never hit that limit.
   Future<RevenueData> revenue({
     DashboardPeriod period = DashboardPeriod.month,
   }) async {
-    final data = await _getData('/api/v1/dashboard/revenue', {
+    final data = await _getData('/dashboard/revenue', {
       'period': period.apiValue,
     });
     return RevenueData.fromJson(data['revenue'] as Map<String, dynamic>);
   }
 
-  Future<List<ServiceStat>> services({
+  /// `limit` default/max match the backend's own (doc §3.3): ranking
+  /// depth, not a page — there is still no `page` on this endpoint.
+  Future<ServiceStatsResult> services({
     DashboardPeriod period = DashboardPeriod.month,
+    int limit = 10,
   }) async {
-    final data = await _getData('/api/v1/dashboard/services', {
+    final data = await _getData('/dashboard/services', {
       'period': period.apiValue,
+      'limit': limit,
     });
-    return (data['services'] as List)
-        .map((e) => ServiceStat.fromJson(e as Map<String, dynamic>))
-        .toList();
+    return ServiceStatsResult.fromJson(data);
   }
 
-  Future<List<AgentStat>> agents({
+  /// `limit` default/max match the backend's own (doc §3.4).
+  Future<AgentStatsResult> agents({
     DashboardPeriod period = DashboardPeriod.month,
+    int limit = 50,
   }) async {
-    final data = await _getData('/api/v1/dashboard/agents', {
+    final data = await _getData('/dashboard/agents', {
       'period': period.apiValue,
+      'limit': limit,
     });
-    return (data['agents'] as List)
-        .map((e) => AgentStat.fromJson(e as Map<String, dynamic>))
-        .toList();
+    return AgentStatsResult.fromJson(data);
   }
 
   Future<TransactionStats> transactionsStats({
     DashboardPeriod period = DashboardPeriod.month,
   }) async {
-    final data = await _getData('/api/v1/dashboard/transactions', {
+    final data = await _getData('/dashboard/transactions', {
       'period': period.apiValue,
     });
     return TransactionStats.fromJson(data['stats'] as Map<String, dynamic>);
   }
 
-  Future<List<InventoryLowStockItem>> inventory() async {
-    final data = await _getData('/api/v1/dashboard/inventory', const {});
-    return (data['inventory'] as List)
-        .map((e) => InventoryLowStockItem.fromJson(e as Map<String, dynamic>))
-        .toList();
+  /// `limit` default/max match the backend's own (doc §3.6) —
+  /// `meta.total` here is the one worth surfacing in the UI: unlike the
+  /// other two, this is a restock worklist, not a ranking, so a silent
+  /// truncation has real operational consequences.
+  Future<LowStockResult> inventory({int limit = 20}) async {
+    final data = await _getData('/dashboard/inventory', {'limit': limit});
+    return LowStockResult.fromJson(data);
   }
 
   Future<Map<String, dynamic>> _getData(

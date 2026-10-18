@@ -118,6 +118,32 @@ class RevenueData {
   }
 }
 
+/// Shared by the 3 dashboard endpoints that cap a ranking/worklist depth
+/// rather than paginate a resource list (`services`, `agents`,
+/// `inventory`) — the shared `Pagination` model (AUTH doc §2.1.6)
+/// deliberately does **not** apply here (dashboard doc §0): no `page`/
+/// `totalPages`, just how deep the ranking goes and whether it was cut
+/// off. `summary`/`revenue`/`transactions` have no `meta` at all.
+class DashboardMeta {
+  const DashboardMeta({
+    required this.limit,
+    required this.total,
+    required this.truncated,
+  });
+
+  final int limit;
+  final int total;
+  final bool truncated;
+
+  factory DashboardMeta.fromJson(Map<String, dynamic> json) {
+    return DashboardMeta(
+      limit: json['limit'] as int,
+      total: json['total'] as int,
+      truncated: json['truncated'] as bool,
+    );
+  }
+}
+
 class ServiceStat {
   const ServiceStat({
     required this.id,
@@ -137,6 +163,26 @@ class ServiceStat {
       serviceName: json['serviceName'] as String,
       count: json['count'] as int,
       revenue: json['revenue'] as num,
+    );
+  }
+}
+
+/// `GET /dashboard/services` result (dashboard doc §3.3) — `meta.total`
+/// is how many services actually had transactions in the period,
+/// *before* `limit` cut the ranking down; `truncated` tells the app
+/// whether this list is the whole thing or just the top slice.
+class ServiceStatsResult {
+  const ServiceStatsResult({required this.services, required this.meta});
+
+  final List<ServiceStat> services;
+  final DashboardMeta meta;
+
+  factory ServiceStatsResult.fromJson(Map<String, dynamic> json) {
+    return ServiceStatsResult(
+      services: (json['services'] as List)
+          .map((e) => ServiceStat.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      meta: DashboardMeta.fromJson(json['meta'] as Map<String, dynamic>),
     );
   }
 }
@@ -164,6 +210,26 @@ class AgentStat {
       transactionCount: json['transactionCount'] as int,
       totalRevenue: json['totalRevenue'] as num,
       agentRevenue: json['agentRevenue'] as num,
+    );
+  }
+}
+
+/// `GET /dashboard/agents` result (dashboard doc §3.4) — unlike
+/// `services`, `truncated` is practically always `false` at a typical
+/// barbershop's AGENT headcount (default `limit` is 50), but AGENT
+/// callers always get `meta.total` of `1` (or `0`), never more.
+class AgentStatsResult {
+  const AgentStatsResult({required this.agents, required this.meta});
+
+  final List<AgentStat> agents;
+  final DashboardMeta meta;
+
+  factory AgentStatsResult.fromJson(Map<String, dynamic> json) {
+    return AgentStatsResult(
+      agents: (json['agents'] as List)
+          .map((e) => AgentStat.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      meta: DashboardMeta.fromJson(json['meta'] as Map<String, dynamic>),
     );
   }
 }
@@ -224,6 +290,26 @@ class InventoryLowStockItem {
       branchName: (json['branch'] as Map<String, dynamic>)['name'] as String,
       quantity: json['quantity'] as num,
       minimumStock: json['minimumStock'] as num,
+    );
+  }
+}
+
+/// `GET /dashboard/inventory` result (dashboard doc §3.6) — this one is
+/// a worklist, not a ranking, so `meta.total` matters more here than
+/// anywhere else in this module: it's the only signal that there are
+/// more items needing restock than what's on screen (§3.6's "‼️" note).
+class LowStockResult {
+  const LowStockResult({required this.items, required this.meta});
+
+  final List<InventoryLowStockItem> items;
+  final DashboardMeta meta;
+
+  factory LowStockResult.fromJson(Map<String, dynamic> json) {
+    return LowStockResult(
+      items: (json['inventory'] as List)
+          .map((e) => InventoryLowStockItem.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      meta: DashboardMeta.fromJson(json['meta'] as Map<String, dynamic>),
     );
   }
 }
