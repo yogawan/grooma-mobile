@@ -31,7 +31,7 @@ class ChangeRequestService {
   }) async {
     try {
       final response = await _dio.post<Map<String, dynamic>>(
-        '/api/v1/transactions/$transactionId/change-requests',
+        '/transactions/$transactionId/change-requests',
         data: {
           'reason': reason,
           'requestedChanges': {
@@ -57,7 +57,7 @@ class ChangeRequestService {
   Future<TransactionPage> listPending({int page = 1, int limit = 20}) async {
     try {
       final response = await _dio.get<Map<String, dynamic>>(
-        '/api/v1/transaction-change-requests',
+        '/transaction-change-requests',
         queryParameters: {'page': page, 'limit': limit},
       );
       return TransactionPage.fromJson(
@@ -77,7 +77,7 @@ class ChangeRequestService {
   Future<Transaction> getDetail(String transactionId) async {
     try {
       final response = await _dio.get<Map<String, dynamic>>(
-        '/api/v1/transaction-change-requests/$transactionId',
+        '/transaction-change-requests/$transactionId',
       );
       return Transaction.fromJson(
         response.data!['data']['transaction'] as Map<String, dynamic>,
@@ -99,7 +99,7 @@ class ChangeRequestService {
   }) async {
     try {
       final response = await _dio.post<Map<String, dynamic>>(
-        '/api/v1/transaction-change-requests/$transactionId/approve',
+        '/transaction-change-requests/$transactionId/approve',
         data: {
           'reviewNote': ?reviewNote,
           'approvalReference': ?approvalReference,
@@ -120,7 +120,7 @@ class ChangeRequestService {
   }) async {
     try {
       final response = await _dio.post<Map<String, dynamic>>(
-        '/api/v1/transaction-change-requests/$transactionId/reject',
+        '/transaction-change-requests/$transactionId/reject',
         data: {'reviewNote': reviewNote},
       );
       return Transaction.fromJson(

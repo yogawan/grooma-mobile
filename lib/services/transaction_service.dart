@@ -30,7 +30,7 @@ class TransactionService {
   }) async {
     try {
       final response = await _dio.post<Map<String, dynamic>>(
-        '/api/v1/transactions',
+        '/transactions',
         data: {
           'customerId': ?customerId,
           'serviceId': serviceId,
@@ -61,7 +61,7 @@ class TransactionService {
   }) async {
     try {
       final response = await _dio.get<Map<String, dynamic>>(
-        '/api/v1/transactions',
+        '/transactions',
         queryParameters: {
           'page': page,
           'limit': limit,
@@ -83,22 +83,21 @@ class TransactionService {
     }
   }
 
-  Future<Transaction> detail(String id) =>
-      _getTransaction('/api/v1/transactions/$id');
+  Future<Transaction> detail(String id) => _getTransaction('/transactions/$id');
 
   /// AGENT only.
   Future<Transaction> complete(String id) =>
-      _postForTransaction('/api/v1/transactions/$id/complete');
+      _postForTransaction('/transactions/$id/complete');
 
   Future<Transaction> cancel(String id) =>
-      _postForTransaction('/api/v1/transactions/$id/cancel');
+      _postForTransaction('/transactions/$id/cancel');
 
   /// Has a server-side side effect (increments `receipt.printCount`) on
   /// every call (transaction doc §6) — only call this when actually
   /// about to show/print a receipt, never for a plain preview. Use
   /// [detail] for read-only previews instead.
   Future<Transaction> receipt(String id) =>
-      _getTransaction('/api/v1/transactions/$id/receipt');
+      _getTransaction('/transactions/$id/receipt');
 
   /// AGENT only. Also used for retrying after `paymentError` on create,
   /// or after a QR expired — same endpoint for "first" and "retry"
@@ -106,7 +105,7 @@ class TransactionService {
   Future<Payment> createOrRetryQris(String transactionId) async {
     try {
       final response = await _dio.post<Map<String, dynamic>>(
-        '/api/v1/payments/qris',
+        '/payments/qris',
         data: {'transactionId': transactionId},
       );
       return Payment.fromJson(
@@ -119,9 +118,7 @@ class TransactionService {
 
   Future<Payment> getPayment(String id) async {
     try {
-      final response = await _dio.get<Map<String, dynamic>>(
-        '/api/v1/payments/$id',
-      );
+      final response = await _dio.get<Map<String, dynamic>>('/payments/$id');
       return Payment.fromJson(
         response.data!['data']['payment'] as Map<String, dynamic>,
       );
