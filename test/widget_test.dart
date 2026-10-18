@@ -91,6 +91,7 @@ class _FakeDashboardAdapter implements HttpClientAdapter {
               'avgOrderValue': 100000,
             },
           ],
+          'meta': {'limit': 10, 'total': 1, 'truncated': false},
         },
       };
     } else if (path.endsWith('/dashboard/agents')) {
@@ -106,6 +107,7 @@ class _FakeDashboardAdapter implements HttpClientAdapter {
               'agentRevenue': 735000,
             },
           ],
+          'meta': {'limit': 50, 'total': 1, 'truncated': false},
         },
       };
     } else if (path.endsWith('/dashboard/transactions')) {
@@ -141,6 +143,7 @@ class _FakeDashboardAdapter implements HttpClientAdapter {
               'minimumStock': 5,
             },
           ],
+          'meta': {'limit': 20, 'total': 1, 'truncated': false},
         },
       };
     } else {
@@ -506,6 +509,61 @@ class _StatusCapturingAdapter implements HttpClientAdapter {
   }
 }
 
+/// Serves GET /branches across 2 pages (3 branches total, `limit=100`)
+/// so [BranchService.listAll]'s page-walking loop can be exercised
+/// end-to-end — this is the exact "picker silently shows only 20" bug
+/// AUTH doc §2.1.4 calls out, and the loop (not just response parsing)
+/// is what actually guards against it.
+class _PagedBranchAdapter implements HttpClientAdapter {
+  int requestCount = 0;
+
+  @override
+  void close({bool force = false}) {}
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<List<int>>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    requestCount++;
+
+    Map<String, dynamic> branch(String id, String code, String name) => {
+      '_id': id,
+      'branchCode': code,
+      'name': name,
+      'timezone': 'Asia/Jakarta',
+      'status': 'ACTIVE',
+      'createdAt': '2026-01-05T04:00:00.000Z',
+      'updatedAt': '2026-09-20T07:30:00.000Z',
+    };
+
+    final page = options.queryParameters['page'] as int;
+    final branches = page == 1
+        ? [
+            branch('66ffaa0011223344556677aa', 'KMG', 'Cabang Kemang'),
+            branch('66ffaa0011223344556677ab', 'SCM', 'Cabang Sudirman'),
+          ]
+        : [branch('66ffaa0011223344556677ac', 'BSD', 'Cabang BSD')];
+
+    final body = {
+      'success': true,
+      'data': {
+        'branches': branches,
+        'pagination': {'page': page, 'limit': 100, 'total': 3, 'totalPages': 2},
+      },
+    };
+
+    return ResponseBody.fromBytes(
+      utf8.encode(jsonEncode(body)),
+      200,
+      headers: {
+        Headers.contentTypeHeader: [Headers.jsonContentType],
+      },
+    );
+  }
+}
+
 void main() {
   testWidgets('shows a loading indicator while the session check is pending', (
     WidgetTester tester,
@@ -588,7 +646,9 @@ void main() {
     expect(find.text('Top Layanan'), findsOneWidget);
     expect(find.text('Performa Agent'), findsOneWidget);
     expect(find.text('Transaksi'), findsOneWidget);
-    expect(find.text('Stok Menipis'), findsOneWidget);
+    // Title includes `meta.total` (dashboard doc §3.6 "‼️") — the fake
+    // adapter's inventory response reports 1 low-stock item.
+    expect(find.text('Stok Menipis (1)'), findsOneWidget);
     expect(find.textContaining('Pomade Matte 100g'), findsOneWidget);
     // AGENT always sees a single, self-only row (dashboard doc §3.4).
     expect(find.text('Anda'), findsOneWidget);
@@ -1026,5 +1086,17 @@ void main() {
       'pages': 1,
     });
     expect(pagination.totalPages, 1);
+  });
+
+  test('BranchService.listAll walks every page instead of silently '
+      'truncating at the default limit (AUTH doc §2.1.4)', () async {
+    final adapter = _PagedBranchAdapter();
+    final dio = Dio(BaseOptions(baseUrl: 'https://grooma.test'))
+      ..httpClientAdapter = adapter;
+
+    final branches = await BranchService(dio).listAll();
+
+    expect(branches.map((b) => b.branchCode), ['KMG', 'SCM', 'BSD']);
+    expect(adapter.requestCount, 2);
   });
 }
