@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../models/user.dart';
 import '../services/auth_controller.dart';
@@ -51,8 +52,8 @@ class AgentHomeScreen extends StatelessWidget {
     return HomeNavScaffold(
       tabs: [
         NavTab(
-          icon: Icons.dashboard_outlined,
-          selectedIcon: Icons.dashboard,
+          icon: LucideIcons.layoutDashboard,
+          selectedIcon: LucideIcons.layoutDashboard,
           label: 'Dashboard',
           page: Scaffold(
             appBar: AppBar(title: const Text('Dashboard')),
@@ -63,8 +64,8 @@ class AgentHomeScreen extends StatelessWidget {
           ),
         ),
         NavTab(
-          icon: Icons.people_outline,
-          selectedIcon: Icons.people,
+          icon: LucideIcons.users,
+          selectedIcon: LucideIcons.users,
           label: 'Customer',
           page: CustomerListScreen(
             customerService: customerService,
@@ -72,8 +73,8 @@ class AgentHomeScreen extends StatelessWidget {
           ),
         ),
         NavTab(
-          icon: Icons.point_of_sale_outlined,
-          selectedIcon: Icons.point_of_sale,
+          icon: LucideIcons.store,
+          selectedIcon: LucideIcons.store,
           label: 'Transaksi',
           page: TransactionListScreen(
             transactionService: transactionService,
@@ -85,8 +86,8 @@ class AgentHomeScreen extends StatelessWidget {
           ),
         ),
         NavTab(
-          icon: Icons.inventory_2_outlined,
-          selectedIcon: Icons.inventory_2,
+          icon: LucideIcons.package,
+          selectedIcon: LucideIcons.package,
           label: 'Inventaris',
           page: InventoryListScreen(
             inventoryService: inventoryService,
@@ -94,8 +95,8 @@ class AgentHomeScreen extends StatelessWidget {
           ),
         ),
         NavTab(
-          icon: Icons.person_outline,
-          selectedIcon: Icons.person,
+          icon: LucideIcons.user,
+          selectedIcon: LucideIcons.user,
           label: 'Profil',
           page: ProfileScreen(
             profileService: profileService,

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../services/api_exception.dart';
 import '../services/auth_controller.dart';
@@ -146,8 +147,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       suffixIcon: IconButton(
                         icon: Icon(
                           _obscurePassword
-                              ? Icons.visibility
-                              : Icons.visibility_off,
+                              ? LucideIcons.eye
+                              : LucideIcons.eyeOff,
                         ),
                         onPressed: () => setState(
                           () => _obscurePassword = !_obscurePassword,
