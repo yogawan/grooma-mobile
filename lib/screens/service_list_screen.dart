@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../models/pagination.dart';
 import '../models/service_item.dart';
@@ -96,7 +97,7 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
       appBar: AppBar(title: const Text('Layanan')),
       floatingActionButton: FloatingActionButton(
         onPressed: _openCreate,
-        child: const Icon(Icons.add),
+        child: const Icon(LucideIcons.plus),
       ),
       body: Column(
         children: [
@@ -113,7 +114,7 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
         return const Center(child: CircularProgressIndicator());
       case _LoadState.locked:
         return MessageView(
-          icon: Icons.lock_outline,
+          icon: LucideIcons.lock,
           iconColor: AppColors.warning,
           title: 'Terkunci',
           message: _errorMessage ?? 'Subscription tidak aktif. Hubungi pemilik untuk memperbarui langganan.',
@@ -121,7 +122,7 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
         );
       case _LoadState.error:
         return MessageView(
-          icon: Icons.error_outline,
+          icon: LucideIcons.circleAlert,
           iconColor: AppColors.error,
           title: 'Gagal memuat layanan',
           message: _errorMessage ?? 'Terjadi kesalahan.',

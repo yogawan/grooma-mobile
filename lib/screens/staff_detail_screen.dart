@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../models/profile.dart';
 import '../models/user.dart';
@@ -140,7 +141,7 @@ class _StaffDetailScreenState extends State<StaffDetailScreen> {
         return const Center(child: CircularProgressIndicator());
       case _LoadState.locked:
         return MessageView(
-          icon: Icons.lock_outline,
+          icon: LucideIcons.lock,
           iconColor: AppColors.warning,
           title: 'Terkunci',
           message: _errorMessage ?? 'Subscription tidak aktif. Hubungi pemilik untuk memperbarui langganan.',
@@ -148,7 +149,7 @@ class _StaffDetailScreenState extends State<StaffDetailScreen> {
         );
       case _LoadState.error:
         return MessageView(
-          icon: Icons.error_outline,
+          icon: LucideIcons.circleAlert,
           iconColor: AppColors.error,
           title: 'Gagal memuat karyawan',
           message: _errorMessage ?? 'Terjadi kesalahan.',
@@ -217,15 +218,15 @@ class _StaffDetailScreenState extends State<StaffDetailScreen> {
                 children: [
                   OutlinedButton.icon(
                     onPressed: _openEdit,
-                    icon: const Icon(Icons.edit_outlined),
+                    icon: const Icon(LucideIcons.pencil),
                     label: const Text('Edit'),
                   ),
                   OutlinedButton.icon(
                     onPressed: _toggleStatus,
                     icon: Icon(
                       staff.status == UserStatus.active
-                          ? Icons.block
-                          : Icons.check_circle_outline,
+                          ? LucideIcons.ban
+                          : LucideIcons.circleCheck,
                     ),
                     label: Text(
                       staff.status == UserStatus.active
