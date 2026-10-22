@@ -20,10 +20,10 @@ Struktur ini diturunkan dari **Authorization Matrix (PRD §3.2)** dan dari role 
 
 | # | Nav Item | Isi |
 |---|---|---|
-| 1 | **Transaksi** | Home/POS — buat transaksi baru, lihat & selesaikan transaksi cabangnya, ajukan perubahan |
+| 1 | **Dashboard** | Ringkasan KPI **cabangnya sendiri saja** |
 | 2 | **Customer** | Lihat, tambah, update customer (tidak bisa nonaktifkan) |
-| 3 | **Inventaris** | CRUD stok, **hanya cabangnya sendiri** |
-| 4 | **Dashboard** | Ringkasan KPI **cabangnya sendiri saja** |
+| 3 | **Transaksi** | Home/POS — buat transaksi baru, lihat & selesaikan transaksi cabangnya, ajukan perubahan |
+| 4 | **Inventaris** | CRUD stok, **hanya cabangnya sendiri** |
 | 5 | **Profil** | Profil akun AGENT, ganti password, logout |
 
 ---
@@ -112,6 +112,6 @@ Ini disengaja (PRD §23.4.1): customer yang sudah duduk di kursi tidak boleh jad
 ## Catatan Lain
 
 - **AGENT tidak punya tab "Kelola"** — keempat isinya HOST-only, jadi memang tidak ada link-nya sama sekali, bukan disembunyikan secara kondisional.
-- **Urutan tab sengaja berbeda antar role:** AGENT ditaruh Transaksi di posisi 1 karena itu kerjaan hariannya (POS); HOST ditaruh Dashboard di posisi 1 karena lebih sering buka overview dulu.
+- **Urutan tab AGENT mengikuti urutan HOST** (Dashboard di posisi 1), bukan diprioritaskan ke Transaksi seperti versi sebelumnya.
 - **"Dashboard" dan "Inventaris" sama namanya di kedua role, tapi scope datanya beda** (semua cabang vs. satu cabang) — ditentukan backend otomatis dari sesi login, bukan dari pilihan di UI (PRD §3.2, §3.3).
 - **HOST tidak bisa membuat transaksi** (`POST /transactions` menolak HOST dengan 403) — jadi di tab Transaksi milik HOST, **jangan tampilkan tombol "Buat Transaksi"** sama sekali. Tab itu untuk HOST sifatnya monitoring + approval, bukan input.

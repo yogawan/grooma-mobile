@@ -41,8 +41,11 @@ class App extends StatelessWidget {
   final ChangeRequestService changeRequestService;
   final InventoryService inventoryService;
   final CustomerService customerService;
-  // The following 4 are HOST-only (Kelola tab, Kelola doc §0) and are
-  // only ever threaded into HostHomeScreen, never AgentHomeScreen.
+  // branchService/staffService/subscriptionService are HOST-only (Kelola
+  // tab, Kelola doc §0) and only ever threaded into HostHomeScreen.
+  // serviceCatalogService goes to both: HOST gets full read/write via
+  // Kelola, AGENT gets read-only access for the "pilih layanan" picker
+  // in Transaksi Baru (MOBILE-BOTTOM-NAVBAR doc "Soal Layanan/Service").
   final BranchService branchService;
   final StaffService staffService;
   final ServiceCatalogService serviceCatalogService;
@@ -86,6 +89,7 @@ class App extends StatelessWidget {
                       changeRequestService: changeRequestService,
                       inventoryService: inventoryService,
                       customerService: customerService,
+                      serviceCatalogService: serviceCatalogService,
                       user: user,
                     );
           }
