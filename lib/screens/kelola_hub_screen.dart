@@ -82,57 +82,67 @@ class _KelolaHubScreenState extends State<KelolaHubScreen> {
                 style: TextStyle(color: AppColors.warning),
               ),
             ),
-          _tile(
-            context,
-            icon: Icons.store_outlined,
-            label: 'Cabang',
-            enabled: !_locked,
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) =>
-                    BranchListScreen(branchService: widget.branchService),
-              ),
-            ),
-          ),
-          _tile(
-            context,
-            icon: Icons.badge_outlined,
-            label: 'Karyawan',
-            enabled: !_locked,
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => StaffListScreen(
-                  staffService: widget.staffService,
-                  branchService: widget.branchService,
+          GridView.count(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisCount: 2,
+            mainAxisSpacing: 12,
+            crossAxisSpacing: 12,
+            childAspectRatio: 1,
+            children: [
+              _tile(
+                context,
+                iconAsset: 'assets/cabang.png',
+                label: 'Cabang',
+                enabled: !_locked,
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        BranchListScreen(branchService: widget.branchService),
+                  ),
                 ),
               ),
-            ),
-          ),
-          _tile(
-            context,
-            icon: Icons.design_services_outlined,
-            label: 'Layanan',
-            enabled: !_locked,
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => ServiceListScreen(
-                  serviceCatalogService: widget.serviceCatalogService,
+              _tile(
+                context,
+                iconAsset: 'assets/karyawan.png',
+                label: 'Karyawan',
+                enabled: !_locked,
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => StaffListScreen(
+                      staffService: widget.staffService,
+                      branchService: widget.branchService,
+                    ),
+                  ),
                 ),
               ),
-            ),
-          ),
-          _tile(
-            context,
-            icon: Icons.receipt_long_outlined,
-            label: 'Subscription & Billing',
-            enabled: true,
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => SubscriptionScreen(
-                  subscriptionService: widget.subscriptionService,
+              _tile(
+                context,
+                iconAsset: 'assets/layanan.png',
+                label: 'Layanan',
+                enabled: !_locked,
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => ServiceListScreen(
+                      serviceCatalogService: widget.serviceCatalogService,
+                    ),
+                  ),
                 ),
               ),
-            ),
+              _tile(
+                context,
+                iconAsset: 'assets/billing.png',
+                label: 'Subscription & Billing',
+                enabled: true,
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => SubscriptionScreen(
+                      subscriptionService: widget.subscriptionService,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -141,24 +151,38 @@ class _KelolaHubScreenState extends State<KelolaHubScreen> {
 
   Widget _tile(
     BuildContext context, {
-    required IconData icon,
+    required String iconAsset,
     required String label,
     required bool enabled,
     required VoidCallback onTap,
   }) {
     return Card(
-      margin: const EdgeInsets.only(bottom: 8),
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: const BorderSide(color: AppColors.border),
       ),
-      child: ListTile(
-        leading: Icon(icon),
-        title: Text(label),
-        trailing: const Icon(Icons.chevron_right),
-        enabled: enabled,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
         onTap: enabled ? onTap : null,
+        child: Opacity(
+          opacity: enabled ? 1 : 0.4,
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Image.asset(iconAsset, width: 56, height: 56),
+                const SizedBox(height: 8),
+                Text(
+                  label,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
