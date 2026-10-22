@@ -204,10 +204,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildSummary(BuildContext context) {
     final summary = _summary!;
     final stats = [
-      ('Total Revenue', formatRupiah(summary.totalRevenue)),
-      ('Jumlah Transaksi', '${summary.transactionCount}'),
-      ('Rata-rata Order', formatRupiah(summary.avgOrderValue)),
-      ('Customer Unik', '${summary.uniqueCustomers}'),
+      (
+        'Total Revenue',
+        formatRupiah(summary.totalRevenue),
+        'assets/total-revenue.png',
+      ),
+      (
+        'Jumlah Transaksi',
+        '${summary.transactionCount}',
+        'assets/jumplah-transaksi.png',
+      ),
+      (
+        'Rata-rata Order',
+        formatRupiah(summary.avgOrderValue),
+        'assets/rata-rata-order.png',
+      ),
+      (
+        'Customer Unik',
+        '${summary.uniqueCustomers}',
+        'assets/customer-unik.png',
+      ),
     ];
 
     return Column(
@@ -222,7 +238,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               .map(
                 (s) => SizedBox(
                   width: (MediaQuery.of(context).size.width - 16 * 2 - 12) / 2,
-                  child: _statCard(context, s.$1, s.$2),
+                  child: _statCard(context, s.$1, s.$2, s.$3),
                 ),
               )
               .toList(),
@@ -254,19 +270,99 @@ class _DashboardScreenState extends State<DashboardScreen> {
             'Metode Pembayaran',
             style: Theme.of(context).textTheme.labelLarge,
           ),
-          const SizedBox(height: 4),
-          if (revenue.paymentBreakdown.isEmpty)
-            _emptyText('Belum ada data.')
-          else
-            ...revenue.paymentBreakdown.map(
-              (p) => _kvRow(
-                context,
-                p.method,
-                '${formatRupiah(p.revenue)} (${p.count}x)',
-              ),
+          const SizedBox(height: 8),
+          _buildPaymentMethodChart(context, revenue.paymentBreakdown),
+          const SizedBox(height: 8),
+          // Always exactly 2 rows (CASH, QRIS) per the model guarantee —
+          // no empty-state branch needed here.
+          ...revenue.paymentBreakdown.map(
+            (p) => _kvRow(
+              context,
+              p.method,
+              '${formatRupiah(p.revenue)} (${p.count}x)',
             ),
+          ),
         ],
       ),
+    );
+  }
+
+  /// 100%-stacked percentage bar, CASH vs QRIS share of revenue.
+  /// Categorical colors (fixed order, never status) — `breakdown` is
+  /// guaranteed to hold exactly these two methods (dashboard doc §3.2),
+  /// so there's no "method missing" fallback to handle.
+  Widget _buildPaymentMethodChart(
+    BuildContext context,
+    List<PaymentBreakdownItem> breakdown,
+  ) {
+    final cash = breakdown.firstWhere((p) => p.method == 'CASH');
+    final qris = breakdown.firstWhere((p) => p.method == 'QRIS');
+    final total = cash.revenue + qris.revenue;
+
+    if (total <= 0) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(4),
+        child: Container(height: 16, color: AppColors.secondarySurface),
+      );
+    }
+
+    final cashPct = cash.revenue / total;
+    final qrisPct = qris.revenue / total;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: SizedBox(
+            height: 16,
+            child: Row(
+              children: [
+                Expanded(
+                  flex: (cashPct * 100).round().clamp(1, 100).toInt(),
+                  child: Container(color: AppColors.chartCash),
+                ),
+                const SizedBox(width: 2),
+                Expanded(
+                  flex: (qrisPct * 100).round().clamp(1, 100).toInt(),
+                  child: Container(color: AppColors.chartQris),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            _legendItem(context, AppColors.chartCash, 'Cash', cashPct),
+            const SizedBox(width: 16),
+            _legendItem(context, AppColors.chartQris, 'QRIS', qrisPct),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _legendItem(
+    BuildContext context,
+    Color color,
+    String label,
+    double pct,
+  ) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 10,
+          height: 10,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 6),
+        Text(
+          '$label ${(pct * 100).round()}%',
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+      ],
     );
   }
 
@@ -442,24 +538,52 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Text(text, style: Theme.of(context).textTheme.titleMedium);
   }
 
-  Widget _statCard(BuildContext context, String label, String value) {
+  Widget _statCard(
+    BuildContext context,
+    String label,
+    String value,
+    String iconAsset,
+  ) {
     return Container(
+      height: 100,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: AppColors.background,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.border),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Text(
-            label,
-            style: Theme.of(context).textTheme.bodySmall
-                ?.copyWith(color: AppColors.secondaryText),
+          Expanded(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodySmall
+                      ?.copyWith(color: AppColors.secondaryText),
+                ),
+                const SizedBox(height: 4),
+                // Revenue/count values are unbounded in length (dashboard
+                // doc has no cap) — scale down rather than wrap/clip so a
+                // large figure never gets hidden behind an ellipsis.
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    value,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 4),
-          Text(value, style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(width: 8),
+          Image.asset(iconAsset, width: 36, height: 36),
         ],
       ),
     );
@@ -474,7 +598,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: AppColors.background,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.border),
       ),

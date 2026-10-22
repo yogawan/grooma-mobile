@@ -12,10 +12,10 @@ enum DashboardPeriod {
   };
 
   String get label => switch (this) {
-    DashboardPeriod.day => 'Harian',
-    DashboardPeriod.week => 'Mingguan',
-    DashboardPeriod.month => 'Bulanan',
-    DashboardPeriod.year => 'Tahunan',
+    DashboardPeriod.day => '1H',
+    DashboardPeriod.week => '7H',
+    DashboardPeriod.month => '30H',
+    DashboardPeriod.year => '1T',
   };
 }
 
@@ -80,6 +80,10 @@ class RevenuePoint {
   }
 }
 
+/// Always exactly 2 entries, CASH then QRIS, even if one was never used
+/// in the requested range — the unused side still comes back zero-filled
+/// (`count: 0, revenue: 0`) rather than omitted (dashboard doc §3.2,
+/// updated 2026-10-19). Callers don't need an empty/missing-key branch.
 class PaymentBreakdownItem {
   const PaymentBreakdownItem({
     required this.method,
