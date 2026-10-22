@@ -105,13 +105,23 @@ class _LoginScreenState extends State<LoginScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  Center(
+                    child: Image.asset(
+                      'assets/app-logo.png',
+                      width: 96,
+                      height: 96,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
                   Text(
-                    'Grooma',
+                    'EasyCasher',
+                    textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.headlineMedium,
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Masuk untuk melanjutkan',
+                    'Kelola bisnis lebih mudah, mulai dari sini.',
+                    textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.bodyMedium
                         ?.copyWith(color: AppColors.secondaryText),
                   ),
