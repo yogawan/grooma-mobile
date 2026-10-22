@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../models/inventory.dart';
 import '../models/pagination.dart';
@@ -138,7 +139,7 @@ class _InventoryListScreenState extends State<InventoryListScreen> {
       appBar: AppBar(title: const Text('Inventaris')),
       floatingActionButton: FloatingActionButton(
         onPressed: _openCreate,
-        child: const Icon(Icons.add),
+        child: const Icon(LucideIcons.plus),
       ),
       body: Column(
         children: [
@@ -161,7 +162,7 @@ class _InventoryListScreenState extends State<InventoryListScreen> {
             onChanged: _onSearchChanged,
             decoration: const InputDecoration(
               hintText: 'Cari nama item',
-              prefixIcon: Icon(Icons.search),
+              prefixIcon: Icon(LucideIcons.search),
             ),
           ),
           const SizedBox(height: 8),
@@ -185,7 +186,7 @@ class _InventoryListScreenState extends State<InventoryListScreen> {
         return const Center(child: CircularProgressIndicator());
       case _LoadState.locked:
         return MessageView(
-          icon: Icons.lock_outline,
+          icon: LucideIcons.lock,
           iconColor: AppColors.warning,
           title: 'Inventaris terkunci',
           message: _errorMessage ?? 'Subscription tidak aktif. Hubungi pemilik untuk memperbarui langganan.',
@@ -193,7 +194,7 @@ class _InventoryListScreenState extends State<InventoryListScreen> {
         );
       case _LoadState.error:
         return MessageView(
-          icon: Icons.error_outline,
+          icon: LucideIcons.circleAlert,
           iconColor: AppColors.error,
           title: 'Gagal memuat inventaris',
           message: _errorMessage ?? 'Terjadi kesalahan.',

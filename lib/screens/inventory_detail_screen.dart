@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../models/inventory.dart';
 import '../models/user.dart';
@@ -157,7 +158,7 @@ class _InventoryDetailScreenState extends State<InventoryDetailScreen> {
         return const Center(child: CircularProgressIndicator());
       case _LoadState.locked:
         return MessageView(
-          icon: Icons.lock_outline,
+          icon: LucideIcons.lock,
           iconColor: AppColors.warning,
           title: 'Inventaris terkunci',
           message: _errorMessage ?? 'Subscription tidak aktif. Hubungi pemilik untuk memperbarui langganan.',
@@ -165,7 +166,7 @@ class _InventoryDetailScreenState extends State<InventoryDetailScreen> {
         );
       case _LoadState.error:
         return MessageView(
-          icon: Icons.error_outline,
+          icon: LucideIcons.circleAlert,
           iconColor: AppColors.error,
           title: 'Gagal memuat item',
           message: _errorMessage ?? 'Terjadi kesalahan.',
@@ -295,12 +296,12 @@ class _InventoryDetailScreenState extends State<InventoryDetailScreen> {
     final buttons = <Widget>[
       OutlinedButton.icon(
         onPressed: _openEdit,
-        icon: const Icon(Icons.edit_outlined),
+        icon: const Icon(LucideIcons.pencil),
         label: const Text('Edit'),
       ),
       OutlinedButton.icon(
         onPressed: _openHistory,
-        icon: const Icon(Icons.history),
+        icon: const Icon(LucideIcons.history),
         label: const Text('Riwayat Stok'),
       ),
     ];
@@ -311,14 +312,14 @@ class _InventoryDetailScreenState extends State<InventoryDetailScreen> {
       buttons.add(
         FilledButton.icon(
           onPressed: _openRecordMovement,
-          icon: const Icon(Icons.swap_vert),
+          icon: const Icon(LucideIcons.arrowUpDown),
           label: const Text('Catat Pergerakan'),
         ),
       );
       buttons.add(
         OutlinedButton.icon(
           onPressed: _deactivate,
-          icon: const Icon(Icons.block),
+          icon: const Icon(LucideIcons.ban),
           label: const Text('Nonaktifkan'),
         ),
       );
