@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../models/pagination.dart';
 import '../models/subscription.dart';
@@ -105,7 +106,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                 errorBuilder: (context, error, stackTrace) => const SizedBox(
                   width: 220,
                   height: 220,
-                  child: Center(child: Icon(Icons.qr_code_2, size: 96)),
+                  child: Center(child: Icon(LucideIcons.qrCode, size: 96)),
                 ),
               ),
             const SizedBox(height: 12),
@@ -142,7 +143,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         return const Center(child: CircularProgressIndicator());
       case _LoadState.error:
         return MessageView(
-          icon: Icons.error_outline,
+          icon: LucideIcons.circleAlert,
           iconColor: AppColors.error,
           title: 'Gagal memuat subscription',
           message: _errorMessage ?? 'Terjadi kesalahan.',

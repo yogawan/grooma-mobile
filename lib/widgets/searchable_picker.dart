@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../theme/app_colors.dart';
 
@@ -128,7 +129,7 @@ class _SearchablePickerSheetState<T> extends State<_SearchablePickerSheet<T>> {
                   onChanged: _onChanged,
                   decoration: InputDecoration(
                     hintText: widget.hintText,
-                    prefixIcon: const Icon(Icons.search),
+                    prefixIcon: const Icon(LucideIcons.search),
                   ),
                 ),
               ),

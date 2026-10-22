@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../models/profile.dart';
 import '../models/user.dart';
@@ -131,12 +132,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
         actions: [
           if (_state == _LoadState.loaded && !_editing)
             IconButton(
-              icon: const Icon(Icons.edit_outlined),
+              icon: const Icon(LucideIcons.pencil),
               tooltip: 'Edit Profil',
               onPressed: _startEditing,
             ),
           IconButton(
-            icon: const Icon(Icons.logout),
+            icon: const Icon(LucideIcons.logOut),
             tooltip: 'Logout',
             onPressed: widget.authController.logout,
           ),
@@ -152,7 +153,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         return const Center(child: CircularProgressIndicator());
       case _LoadState.error:
         return MessageView(
-          icon: Icons.error_outline,
+          icon: LucideIcons.circleAlert,
           iconColor: AppColors.error,
           title: 'Gagal memuat profil',
           message: _errorMessage ?? 'Terjadi kesalahan.',
@@ -179,7 +180,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           const SizedBox(height: 20),
           OutlinedButton.icon(
             onPressed: _startEditing,
-            icon: const Icon(Icons.edit_outlined),
+            icon: const Icon(LucideIcons.pencil),
             label: const Text('Edit Profil'),
           ),
         ],
