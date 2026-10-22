@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../models/customer.dart';
 import '../models/user.dart';
@@ -138,7 +139,7 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
         return const Center(child: CircularProgressIndicator());
       case _LoadState.error:
         return MessageView(
-          icon: Icons.error_outline,
+          icon: LucideIcons.circleAlert,
           iconColor: AppColors.error,
           title: 'Gagal memuat customer',
           message: _errorMessage ?? 'Terjadi kesalahan.',
@@ -272,7 +273,7 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
     final buttons = <Widget>[
       OutlinedButton.icon(
         onPressed: _openEdit,
-        icon: const Icon(Icons.edit_outlined),
+        icon: const Icon(LucideIcons.pencil),
         label: const Text('Edit'),
       ),
     ];
@@ -282,7 +283,7 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
         OutlinedButton.icon(
           onPressed: _toggleActive,
           icon: Icon(
-            customer.isActive ? Icons.block : Icons.check_circle_outline,
+            customer.isActive ? LucideIcons.ban : LucideIcons.circleCheck,
           ),
           label: Text(customer.isActive ? 'Nonaktifkan' : 'Aktifkan'),
         ),

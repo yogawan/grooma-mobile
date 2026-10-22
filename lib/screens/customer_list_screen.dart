@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../models/customer.dart';
 import '../models/pagination.dart';
@@ -122,7 +123,7 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
       appBar: AppBar(title: const Text('Customer')),
       floatingActionButton: FloatingActionButton(
         onPressed: _openCreate,
-        child: const Icon(Icons.add),
+        child: const Icon(LucideIcons.plus),
       ),
       body: Column(
         children: [
@@ -136,7 +137,7 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
               maxLength: 100,
               decoration: const InputDecoration(
                 hintText: 'Cari nama atau nomor HP',
-                prefixIcon: Icon(Icons.search),
+                prefixIcon: Icon(LucideIcons.search),
                 counterText: '',
               ),
             ),
@@ -154,7 +155,7 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
         return const Center(child: CircularProgressIndicator());
       case _LoadState.error:
         return MessageView(
-          icon: Icons.error_outline,
+          icon: LucideIcons.circleAlert,
           iconColor: AppColors.error,
           title: 'Gagal memuat customer',
           message: _errorMessage ?? 'Terjadi kesalahan.',
