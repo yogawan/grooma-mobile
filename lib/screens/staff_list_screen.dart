@@ -140,7 +140,8 @@ class _StaffListScreenState extends State<StaffListScreen> {
           onRefresh: _load,
           child: ListView.separated(
             itemCount: _staff.length,
-            separatorBuilder: (context, index) => const Divider(height: 1),
+            separatorBuilder: (context, index) =>
+                const Divider(height: 1, thickness: 1, color: AppColors.border),
             itemBuilder: (context, index) => _buildRow(context, _staff[index]),
           ),
         );

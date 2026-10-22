@@ -135,7 +135,8 @@ class _ServiceListScreenState extends State<ServiceListScreen> {
           onRefresh: _load,
           child: ListView.separated(
             itemCount: _services.length,
-            separatorBuilder: (context, index) => const Divider(height: 1),
+            separatorBuilder: (context, index) =>
+                const Divider(height: 1, thickness: 1, color: AppColors.border),
             itemBuilder: (context, index) =>
                 _buildRow(context, _services[index]),
           ),

@@ -129,7 +129,8 @@ class _BranchListScreenState extends State<BranchListScreen> {
           onRefresh: _load,
           child: ListView.separated(
             itemCount: _branches.length,
-            separatorBuilder: (context, index) => const Divider(height: 1),
+            separatorBuilder: (context, index) =>
+                const Divider(height: 1, thickness: 1, color: AppColors.border),
             itemBuilder: (context, index) =>
                 _buildRow(context, _branches[index]),
           ),

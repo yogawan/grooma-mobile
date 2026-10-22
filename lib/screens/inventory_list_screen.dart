@@ -207,7 +207,8 @@ class _InventoryListScreenState extends State<InventoryListScreen> {
           onRefresh: _load,
           child: ListView.separated(
             itemCount: _items.length,
-            separatorBuilder: (context, index) => const Divider(height: 1),
+            separatorBuilder: (context, index) =>
+                const Divider(height: 1, thickness: 1, color: AppColors.border),
             itemBuilder: (context, index) => _buildRow(context, _items[index]),
           ),
         );
