@@ -23,13 +23,15 @@ class AppTheme {
         error: AppColors.error,
       ),
       appBarTheme: const AppBarTheme(
-        backgroundColor: AppColors.surface,
+        backgroundColor: AppColors.background,
         foregroundColor: AppColors.primaryText,
         elevation: 0,
+        shape: _AppBarBottomDivider(),
       ),
       navigationBarTheme: NavigationBarThemeData(
-        backgroundColor: AppColors.surface,
-        indicatorColor: AppColors.secondarySurface,
+        backgroundColor: AppColors.background,
+        elevation: 0,
+        indicatorColor: Colors.transparent,
         iconTheme: WidgetStateProperty.resolveWith(
           (states) => IconThemeData(
             color: states.contains(WidgetState.selected)
@@ -70,4 +72,41 @@ class AppTheme {
       ),
     );
   }
+}
+
+/// Paints a single hairline at the app bar's bottom edge instead of the
+/// default elevation shadow. Needed now that the app bar background
+/// matches the scaffold (`AppColors.background` on both) — with no
+/// color contrast between them, this is the only thing marking where
+/// the app bar ends and page content begins. Applied once here via
+/// `AppBarTheme.shape` so every `AppBar` in the app picks it up without
+/// passing anything per screen.
+class _AppBarBottomDivider extends ShapeBorder {
+  const _AppBarBottomDivider();
+
+  @override
+  EdgeInsetsGeometry get dimensions => EdgeInsets.zero;
+
+  @override
+  Path getInnerPath(Rect rect, {TextDirection? textDirection}) =>
+      Path()..addRect(rect);
+
+  @override
+  Path getOuterPath(Rect rect, {TextDirection? textDirection}) =>
+      Path()..addRect(rect);
+
+  @override
+  void paint(Canvas canvas, Rect rect, {TextDirection? textDirection}) {
+    final paint = Paint()
+      ..color = AppColors.border
+      ..strokeWidth = 1;
+    canvas.drawLine(
+      Offset(rect.left, rect.bottom - 0.5),
+      Offset(rect.right, rect.bottom - 0.5),
+      paint,
+    );
+  }
+
+  @override
+  ShapeBorder scale(double t) => this;
 }

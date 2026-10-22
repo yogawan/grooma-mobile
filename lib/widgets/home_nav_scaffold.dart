@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../theme/app_colors.dart';
+
 /// One bottom-nav destination: its icon pair, label, and page. [page]
 /// keeps its own Scaffold/AppBar — this widget only owns tab switching.
 class NavTab {
@@ -41,16 +43,24 @@ class _HomeNavScaffoldState extends State<HomeNavScaffold> {
         index: _index,
         children: [for (final tab in widget.tabs) tab.page],
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _index,
-        onDestinationSelected: (index) => setState(() => _index = index),
-        destinations: [
-          for (final tab in widget.tabs)
-            NavigationDestination(
-              icon: _badged(Icon(tab.icon), tab.badgeCount),
-              selectedIcon: _badged(Icon(tab.selectedIcon), tab.badgeCount),
-              label: tab.label,
-            ),
+      bottomNavigationBar: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Hairline boundary, matching the AppBar's — needed now that
+          // the nav bar background matches the page behind it.
+          Container(height: 1, color: AppColors.border),
+          NavigationBar(
+            selectedIndex: _index,
+            onDestinationSelected: (index) => setState(() => _index = index),
+            destinations: [
+              for (final tab in widget.tabs)
+                NavigationDestination(
+                  icon: _badged(Icon(tab.icon), tab.badgeCount),
+                  selectedIcon: _badged(Icon(tab.selectedIcon), tab.badgeCount),
+                  label: tab.label,
+                ),
+            ],
+          ),
         ],
       ),
     );
