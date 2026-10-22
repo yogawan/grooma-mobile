@@ -47,7 +47,7 @@ Terurut alfabetis berdasarkan `name` (tie-breaker `_id`, jadi urutannya stabil a
 1. **`?search=` kosong tetap berarti "tanpa filter"**, bukan `400` — persis seperti perilaku lama. Search box yang dikosongkan user aman mengirim string kosong; backend menormalkannya jadi "tidak ada filter". *(Catatan: `/inventory` dan `/transactions` justru menolak `?search=` kosong dengan `400` — beda perilaku yang sudah ada sejak sebelum perubahan ini, jangan diasumsikan seragam.)*
 2. **`search` sekarang dibatasi 100 karakter** (`400` kalau lebih). Sebelumnya tidak ada batas. Tidak berdampak pada input manusia normal, tapi kalau app pernah mengirim isi clipboard mentah ke field ini, tambahkan `maxLength` di sisi UI.
 
-**Rekomendasi UI tetap sama, dan sekarang lebih aman:** desain search-first dengan debounce 2–3 karakter. Bedanya, "browse semua customer" sekarang **bisa** dilakukan dengan benar lewat infinite scroll (`page` naik sampai `page >= totalPages`) tanpa menarik ribuan baris sekaligus — pakai `pagination.total` untuk menampilkan jumlah hasil, bukan `customers.length`.
+**UI mobile (app Flutter) menampilkan list penuh begitu layar dibuka** — `search: null` di-load duluan (halaman 1), bukan search-first lagi. Search box tetap ada dan menyaring list yang sama secara live (debounce ~400ms), dan mengosongkannya kembali ke list penuh. Ini aman dipakai karena endpoint sudah paginasi (`page` naik sampai `page >= totalPages`) sehingga tidak menarik ribuan baris sekaligus — pakai `pagination.total` untuk menampilkan jumlah hasil, bukan `customers.length`.
 
 ### 2.1. Normalisasi Nomor HP — Tidak Perlu Dilakukan di Client
 

@@ -13,15 +13,12 @@ import '../widgets/status_badge.dart';
 import 'customer_detail_screen.dart';
 import 'customer_form_screen.dart';
 
-enum _LoadState { idle, loading, loaded, error }
+enum _LoadState { loading, loaded, error }
 
-const _minQueryLength = 2;
-
-/// Search-first by design — even though the endpoint is paginated now
-/// (AUTH doc §2.1.4) rather than returning the full cross-branch
-/// customer base in one response, an untargeted query would still walk
-/// every page just to find one person. A query shorter than
-/// [_minQueryLength] never reaches the network.
+/// Loads page 1 unfiltered as soon as the screen opens (customer doc
+/// §2 confirms an empty `search` means "no filter", not `400`).
+/// Typing narrows the same list via `search`; clearing the field goes
+/// back to the full list.
 class CustomerListScreen extends StatefulWidget {
   const CustomerListScreen({
     super.key,
@@ -40,11 +37,17 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
   final _searchController = TextEditingController();
   Timer? _debounce;
 
-  _LoadState _state = _LoadState.idle;
+  _LoadState _state = _LoadState.loading;
   String? _errorMessage;
   List<Customer> _results = const [];
   Pagination? _pagination;
   int _page = 1;
+
+  @override
+  void initState() {
+    super.initState();
+    _search('');
+  }
 
   @override
   void dispose() {
@@ -55,18 +58,9 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
 
   void _onSearchChanged(String value) {
     _debounce?.cancel();
-    final query = value.trim();
-    if (query.length < _minQueryLength) {
-      setState(() {
-        _state = _LoadState.idle;
-        _results = const [];
-        _pagination = null;
-      });
-      return;
-    }
     _debounce = Timer(const Duration(milliseconds: 400), () {
       _page = 1;
-      _search(query);
+      _search(value.trim());
     });
   }
 
@@ -77,7 +71,7 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
     });
     try {
       final result = await widget.customerService.search(
-        search: query,
+        search: query.isEmpty ? null : query,
         page: _page,
       );
       setState(() {
@@ -156,35 +150,31 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
 
   Widget _buildBody(BuildContext context) {
     switch (_state) {
-      case _LoadState.idle:
-        return Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Text(
-              'Ketik minimal $_minQueryLength karakter (nama atau nomor HP) untuk mencari.',
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyMedium
-                  ?.copyWith(color: AppColors.secondaryText),
-            ),
-          ),
-        );
       case _LoadState.loading:
         return const Center(child: CircularProgressIndicator());
       case _LoadState.error:
         return MessageView(
           icon: Icons.error_outline,
           iconColor: AppColors.error,
-          title: 'Gagal mencari customer',
+          title: 'Gagal memuat customer',
           message: _errorMessage ?? 'Terjadi kesalahan.',
           onRetry: () => _search(_searchController.text.trim()),
         );
       case _LoadState.loaded:
         if (_results.isEmpty) {
-          return const Center(child: Text('Tidak ada customer yang cocok.'));
+          final isFiltered = _searchController.text.trim().isNotEmpty;
+          return Center(
+            child: Text(
+              isFiltered
+                  ? 'Tidak ada customer yang cocok.'
+                  : 'Belum ada customer.',
+            ),
+          );
         }
         return ListView.separated(
           itemCount: _results.length,
-          separatorBuilder: (context, index) => const Divider(height: 1),
+          separatorBuilder: (context, index) =>
+              const Divider(height: 1, thickness: 1, color: AppColors.border),
           itemBuilder: (context, index) => _buildRow(context, _results[index]),
         );
     }
