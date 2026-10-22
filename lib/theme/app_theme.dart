@@ -51,7 +51,17 @@ class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: AppColors.surface,
+        labelStyle: const TextStyle(color: AppColors.secondaryText),
+        hintStyle: const TextStyle(color: AppColors.secondaryText),
         border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppColors.border),
+        ),
+        // Material 3 ignores `border`'s own color for filled fields and
+        // substitutes its own (much darker) default unless the enabled
+        // state is given explicitly — this is what was rendering as a
+        // heavy border instead of the intended hairline.
+        enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: AppColors.border),
         ),
