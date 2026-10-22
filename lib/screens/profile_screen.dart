@@ -37,6 +37,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String? _errorMessage;
   UserProfile? _profile;
 
+  bool _editing = false;
   bool _saving = false;
   String? _saveError;
 
@@ -74,6 +75,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  void _startEditing() {
+    setState(() {
+      _saveError = null;
+      _editing = true;
+    });
+  }
+
+  void _cancelEditing() {
+    final profile = _profile!;
+    _nameController.text = profile.name;
+    _phoneController.text = profile.phone ?? '';
+    setState(() {
+      _saveError = null;
+      _editing = false;
+    });
+  }
+
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -92,6 +110,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       setState(() {
         _profile = updated;
         _saving = false;
+        _editing = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Profil berhasil diperbarui')),
@@ -110,6 +129,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
       appBar: AppBar(
         title: const Text('Profil'),
         actions: [
+          if (_state == _LoadState.loaded && !_editing)
+            IconButton(
+              icon: const Icon(Icons.edit_outlined),
+              tooltip: 'Edit Profil',
+              onPressed: _startEditing,
+            ),
           IconButton(
             icon: const Icon(Icons.logout),
             tooltip: 'Logout',
@@ -134,11 +159,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
           onRetry: _load,
         );
       case _LoadState.loaded:
-        return _buildForm(context, _profile!);
+        return _editing
+            ? _buildEditForm(context, _profile!)
+            : _buildReadOnlyView(context, _profile!);
     }
   }
 
-  Widget _buildForm(BuildContext context, UserProfile profile) {
+  /// Default view — everything read-only, nothing pre-armed for
+  /// editing. Matches the "view first, edit on request" pattern instead
+  /// of landing straight on a live form: most visits here are just to
+  /// check your own info, not to change it.
+  Widget _buildReadOnlyView(BuildContext context, UserProfile profile) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _infoCard(context, profile, showEditableFields: true),
+          const SizedBox(height: 20),
+          OutlinedButton.icon(
+            onPressed: _startEditing,
+            icon: const Icon(Icons.edit_outlined),
+            label: const Text('Edit Profil'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEditForm(BuildContext context, UserProfile profile) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Form(
@@ -146,7 +195,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _infoCard(context, profile),
+            _infoCard(context, profile, showEditableFields: false),
             const SizedBox(height: 24),
             Text('Edit Profil', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 12),
@@ -178,18 +227,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
               Text(_saveError!, style: const TextStyle(color: AppColors.error)),
             ],
             const SizedBox(height: 20),
-            FilledButton(
-              onPressed: _saving ? null : _save,
-              child: _saving
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: AppColors.onPrimary,
-                      ),
-                    )
-                  : const Text('Simpan'),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: _saving ? null : _cancelEditing,
+                    child: const Text('Batal'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FilledButton(
+                    onPressed: _saving ? null : _save,
+                    child: _saving
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: AppColors.onPrimary,
+                            ),
+                          )
+                        : const Text('Simpan'),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -197,7 +259,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _infoCard(BuildContext context, UserProfile profile) {
+  /// `showEditableFields` adds Nama/No. Telepon as read-only rows for
+  /// the view-mode card — in edit mode those two live in the form
+  /// instead, so this card sticks to the fields that are never editable
+  /// through this endpoint (profile doc §6).
+  Widget _infoCard(
+    BuildContext context,
+    UserProfile profile, {
+    required bool showEditableFields,
+  }) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -208,6 +278,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (showEditableFields) ...[
+            _infoRow(context, 'Nama', profile.name),
+            _infoRow(
+              context,
+              'No. Telepon',
+              (profile.phone?.isNotEmpty ?? false) ? profile.phone! : '-',
+            ),
+          ],
           _infoRow(context, 'Username', profile.username),
           _infoRow(
             context,

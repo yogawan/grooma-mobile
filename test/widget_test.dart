@@ -690,14 +690,19 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // Read-only fields from the GET response.
+    // Lands in read-only view mode — all fields shown as text, no form
+    // or Save button armed until the user asks to edit.
     expect(find.text('budi_agent'), findsOneWidget);
     expect(find.text('Agent'), findsOneWidget);
     expect(find.text('Cabang Kemang'), findsOneWidget);
     expect(find.text('Aktif'), findsOneWidget);
-    // Editable fields pre-filled.
     expect(find.text('Budi Santoso'), findsOneWidget);
     expect(find.text('08123456789'), findsOneWidget);
+    expect(find.byType(TextFormField), findsNothing);
+    expect(find.text('Simpan'), findsNothing);
+
+    await tester.tap(find.byTooltip('Edit Profil'));
+    await tester.pumpAndSettle();
 
     await tester.enterText(
       find.widgetWithText(TextFormField, 'Budi Santoso'),
@@ -709,6 +714,9 @@ void main() {
     expect(find.text('Profil berhasil diperbarui'), findsOneWidget);
     // AuthController's cached user is kept in sync post-edit.
     expect(authController.user?.name, 'Budi Santoso Wijaya');
+    // Back to read-only view showing the updated name, form gone again.
+    expect(find.text('Budi Santoso Wijaya'), findsOneWidget);
+    expect(find.byType(TextFormField), findsNothing);
   });
 
   testWidgets('HOST transaction list shows the agent name in the subtitle', (
