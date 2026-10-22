@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../models/payment.dart';
 import '../services/api_exception.dart';
@@ -104,7 +105,7 @@ class _QrPaymentScreenState extends State<QrPaymentScreen> {
     if (_payment.status == PaymentGatewayStatus.paid) {
       return _buildTerminal(
         context,
-        icon: Icons.check_circle,
+        icon: LucideIcons.circleCheck,
         color: AppColors.success,
         title: 'Pembayaran Berhasil',
         subtitle: formatRupiah(_payment.grossAmount),
@@ -118,7 +119,7 @@ class _QrPaymentScreenState extends State<QrPaymentScreen> {
     if (expired) {
       return _buildTerminal(
         context,
-        icon: Icons.timer_off,
+        icon: LucideIcons.timerOff,
         color: AppColors.error,
         title: 'QR Kedaluwarsa',
         subtitle: 'Buat QR baru untuk melanjutkan pembayaran.',
@@ -137,7 +138,7 @@ class _QrPaymentScreenState extends State<QrPaymentScreen> {
         _payment.status == PaymentGatewayStatus.refunded) {
       return _buildTerminal(
         context,
-        icon: Icons.error_outline,
+        icon: LucideIcons.circleAlert,
         color: AppColors.error,
         title: _payment.status.label,
         subtitle: formatRupiah(_payment.grossAmount),
@@ -168,14 +169,14 @@ class _QrPaymentScreenState extends State<QrPaymentScreen> {
               errorBuilder: (context, error, stackTrace) => const SizedBox(
                 width: 240,
                 height: 240,
-                child: Center(child: Icon(Icons.qr_code_2, size: 96)),
+                child: Center(child: Icon(LucideIcons.qrCode, size: 96)),
               ),
             )
           else
             const SizedBox(
               width: 240,
               height: 240,
-              child: Center(child: Icon(Icons.qr_code_2, size: 96)),
+              child: Center(child: Icon(LucideIcons.qrCode, size: 96)),
             ),
           const SizedBox(height: 16),
           const SizedBox(

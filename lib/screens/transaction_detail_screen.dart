@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../models/transaction.dart';
 import '../models/user.dart';
@@ -294,7 +295,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
         return const Center(child: CircularProgressIndicator());
       case _LoadState.locked:
         return MessageView(
-          icon: Icons.lock_outline,
+          icon: LucideIcons.lock,
           iconColor: AppColors.warning,
           title: 'Transaksi terkunci',
           message: _errorMessage ?? 'Subscription tidak aktif. Hubungi pemilik untuk memperbarui langganan.',
@@ -302,7 +303,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
         );
       case _LoadState.error:
         return MessageView(
-          icon: Icons.error_outline,
+          icon: LucideIcons.circleAlert,
           iconColor: AppColors.error,
           title: 'Gagal memuat transaksi',
           message: _errorMessage ?? 'Terjadi kesalahan.',
@@ -445,7 +446,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
       buttons.add(
         FilledButton.icon(
           onPressed: _payQris,
-          icon: const Icon(Icons.qr_code),
+          icon: const Icon(LucideIcons.qrCode),
           label: const Text('Bayar QRIS'),
         ),
       );
@@ -454,7 +455,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
       buttons.add(
         FilledButton.icon(
           onPressed: _complete,
-          icon: const Icon(Icons.check),
+          icon: const Icon(LucideIcons.check),
           label: const Text('Selesaikan'),
         ),
       );
@@ -463,7 +464,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
       buttons.add(
         OutlinedButton.icon(
           onPressed: _cancel,
-          icon: const Icon(Icons.close),
+          icon: const Icon(LucideIcons.x),
           label: const Text('Batalkan'),
         ),
       );
@@ -472,7 +473,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
       buttons.add(
         OutlinedButton.icon(
           onPressed: _openChangeRequestForm,
-          icon: const Icon(Icons.edit_note),
+          icon: const Icon(LucideIcons.pencilLine),
           label: const Text('Ajukan Koreksi'),
         ),
       );
@@ -480,7 +481,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
     buttons.add(
       OutlinedButton.icon(
         onPressed: _openReceipt,
-        icon: const Icon(Icons.receipt_long),
+        icon: const Icon(LucideIcons.receiptText),
         label: const Text('Lihat Struk'),
       ),
     );

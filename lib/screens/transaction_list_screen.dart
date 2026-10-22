@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../models/pagination.dart';
 import '../models/transaction.dart';
@@ -196,7 +197,7 @@ class _TransactionListScreenState extends State<TransactionListScreen> {
         actions: [
           if (!isAgent)
             IconButton(
-              icon: const Icon(Icons.pending_actions_outlined),
+              icon: const Icon(LucideIcons.clockAlert),
               tooltip: 'Persetujuan Koreksi',
               onPressed: _openChangeRequestQueue,
             ),
@@ -205,7 +206,7 @@ class _TransactionListScreenState extends State<TransactionListScreen> {
       floatingActionButton: isAgent
           ? FloatingActionButton(
               onPressed: _openCreate,
-              child: const Icon(Icons.add),
+              child: const Icon(LucideIcons.plus),
             )
           : null,
       body: Column(
@@ -229,7 +230,7 @@ class _TransactionListScreenState extends State<TransactionListScreen> {
             onChanged: _onSearchChanged,
             decoration: const InputDecoration(
               hintText: 'Cari kode transaksi',
-              prefixIcon: Icon(Icons.search),
+              prefixIcon: Icon(LucideIcons.search),
             ),
           ),
           const SizedBox(height: 8),
@@ -261,7 +262,7 @@ class _TransactionListScreenState extends State<TransactionListScreen> {
         return const Center(child: CircularProgressIndicator());
       case _LoadState.locked:
         return MessageView(
-          icon: Icons.lock_outline,
+          icon: LucideIcons.lock,
           iconColor: AppColors.warning,
           title: 'Transaksi terkunci',
           message: _errorMessage ?? 'Subscription tidak aktif. Hubungi pemilik untuk memperbarui langganan.',
@@ -269,7 +270,7 @@ class _TransactionListScreenState extends State<TransactionListScreen> {
         );
       case _LoadState.error:
         return MessageView(
-          icon: Icons.error_outline,
+          icon: LucideIcons.circleAlert,
           iconColor: AppColors.error,
           title: 'Gagal memuat transaksi',
           message: _errorMessage ?? 'Terjadi kesalahan.',

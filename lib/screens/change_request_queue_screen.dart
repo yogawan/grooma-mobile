@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../models/pagination.dart';
 import '../models/transaction.dart';
@@ -122,7 +123,7 @@ class _ChangeRequestQueueScreenState extends State<ChangeRequestQueueScreen> {
         return const Center(child: CircularProgressIndicator());
       case _LoadState.locked:
         return MessageView(
-          icon: Icons.lock_outline,
+          icon: LucideIcons.lock,
           iconColor: AppColors.warning,
           title: 'Terkunci',
           message: _errorMessage ?? 'Subscription tidak aktif. Hubungi pemilik untuk memperbarui langganan.',
@@ -130,7 +131,7 @@ class _ChangeRequestQueueScreenState extends State<ChangeRequestQueueScreen> {
         );
       case _LoadState.error:
         return MessageView(
-          icon: Icons.error_outline,
+          icon: LucideIcons.circleAlert,
           iconColor: AppColors.error,
           title: 'Gagal memuat antrean',
           message: _errorMessage ?? 'Terjadi kesalahan.',

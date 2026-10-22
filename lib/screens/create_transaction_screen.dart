@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../models/customer.dart';
 import '../models/service_item.dart';
@@ -231,7 +232,7 @@ class _CreateTransactionScreenState extends State<CreateTransactionScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.qr_code_2, size: 48, color: AppColors.warning),
+            const Icon(LucideIcons.qrCode, size: 48, color: AppColors.warning),
             const SizedBox(height: 16),
             Text(
               'Transaksi tersimpan, tapi QR gagal dibuat',
@@ -370,8 +371,8 @@ class _CreateTransactionScreenState extends State<CreateTransactionScreen> {
         decoration: InputDecoration(
           labelText: label,
           suffixIcon: onClear != null
-              ? IconButton(icon: const Icon(Icons.clear), onPressed: onClear)
-              : const Icon(Icons.arrow_drop_down),
+              ? IconButton(icon: const Icon(LucideIcons.x), onPressed: onClear)
+              : const Icon(LucideIcons.chevronDown),
         ),
         child: Text(
           value ?? placeholder,

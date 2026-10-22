@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../models/transaction.dart';
 import '../services/api_exception.dart';
@@ -73,7 +74,7 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
         return const Center(child: CircularProgressIndicator());
       case _LoadState.error:
         return MessageView(
-          icon: Icons.error_outline,
+          icon: LucideIcons.circleAlert,
           iconColor: AppColors.error,
           title: 'Gagal memuat struk',
           message: _errorMessage ?? 'Terjadi kesalahan.',
