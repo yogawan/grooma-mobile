@@ -20,18 +20,22 @@ lib/
 ```
 
 ## Global Color Tokens
-- Background: `#EEEEEE`
-- Primary: `#171717`
+- Primary: `#0F766E`
+- Primary Hover: `#115E59`
+- Primary Light: `#CCFBF1`
 - On Primary: `#FFFFFF`
+- Background: `#F8FAFC`
 - Surface: `#FFFFFF`
-- Secondary Surface: `#E5E5E5`
-- Primary Text: `#171717`
-- Secondary Text: `#525252`
-- Border: `#D4D4D4`
-- Success: `#15803D`
-- Warning: `#A16207`
-- Error: `#B91C1C`
-- Info: `#1D4ED8`
+- Secondary Surface: `#E2E8F0`
+- Foreground: `#0F172A`
+- Muted: `#64748B`
+- Primary Text: `#0F172A`
+- Secondary Text: `#64748B`
+- Border: `#E2E8F0`
+- Success: `#16A34A`
+- Warning: `#F59E0B`
+- Danger / Error: `#DC2626`
+- Info: `#2563EB`
 
 ## Typography
 - Use Plus Jakarta Sans globally.
