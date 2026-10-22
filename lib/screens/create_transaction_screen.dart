@@ -1,30 +1,42 @@
 import 'package:flutter/material.dart';
 
+import '../models/customer.dart';
+import '../models/service_item.dart';
 import '../models/transaction.dart';
 import '../models/user.dart';
 import '../services/api_exception.dart';
 import '../services/auth_controller.dart';
 import '../services/change_request_service.dart';
+import '../services/customer_service.dart';
+import '../services/service_catalog_service.dart';
 import '../services/transaction_service.dart';
 import '../theme/app_colors.dart';
+import '../utils/formatters.dart';
+import '../widgets/searchable_picker.dart';
 import 'qr_payment_screen.dart';
 import 'transaction_detail_screen.dart';
 
-/// AGENT only. No Services/Customers catalog endpoint exists yet in any
-/// doc read so far, so `serviceId`/`customerId` are plain manual-entry
-/// fields rather than pickers — functional against the real API, but a
-/// known rough edge until a catalog module shows up.
+/// AGENT only. Service and Customer are picked via a searchable bottom
+/// sheet instead of typed in by id. Service has no server-side search
+/// (Kelola doc §3.1), so the picker fetches the whole active catalog
+/// once via [ServiceCatalogService.listAll] and filters in-memory;
+/// Customer narrows through the live `/customers` search instead
+/// (customer doc §2), since that base can be much bigger.
 class CreateTransactionScreen extends StatefulWidget {
   const CreateTransactionScreen({
     super.key,
     required this.transactionService,
     required this.changeRequestService,
+    required this.customerService,
+    required this.serviceCatalogService,
     required this.authController,
     required this.user,
   });
 
   final TransactionService transactionService;
   final ChangeRequestService changeRequestService;
+  final CustomerService customerService;
+  final ServiceCatalogService serviceCatalogService;
   final AuthController authController;
   final User user;
 
@@ -35,9 +47,14 @@ class CreateTransactionScreen extends StatefulWidget {
 
 class _CreateTransactionScreenState extends State<CreateTransactionScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _serviceIdController = TextEditingController();
-  final _customerIdController = TextEditingController();
   final _discountController = TextEditingController(text: '0');
+
+  ServiceItem? _selectedService;
+  Customer? _selectedCustomer;
+  // Fetched once (lazily) then reused for every subsequent picker open,
+  // since the catalog doesn't change mid-form and refetching on every
+  // tap would just be a slower picker for no benefit.
+  List<ServiceItem>? _allServices;
 
   PaymentMethod _paymentMethod = PaymentMethod.cash;
   ServiceHourType _hourType = ServiceHourType.regular;
@@ -53,14 +70,60 @@ class _CreateTransactionScreenState extends State<CreateTransactionScreen> {
 
   @override
   void dispose() {
-    _serviceIdController.dispose();
-    _customerIdController.dispose();
     _discountController.dispose();
     super.dispose();
   }
 
+  Future<List<ServiceItem>> _searchServices(String query) async {
+    _allServices ??= await widget.serviceCatalogService.listAll();
+    if (query.isEmpty) return _allServices!;
+    final q = query.toLowerCase();
+    return _allServices!
+        .where(
+          (s) =>
+              s.name.toLowerCase().contains(q) ||
+              s.serviceCode.toLowerCase().contains(q),
+        )
+        .toList();
+  }
+
+  Future<List<Customer>> _searchCustomers(String query) async {
+    final result = await widget.customerService.search(
+      search: query.isEmpty ? null : query,
+    );
+    return result.customers;
+  }
+
+  Future<void> _pickService() async {
+    final picked = await showSearchablePicker<ServiceItem>(
+      context: context,
+      title: 'Pilih Layanan',
+      hintText: 'Cari nama atau kode layanan',
+      onSearch: _searchServices,
+      labelOf: (s) => s.name,
+      subtitleOf: (s) => formatRupiah(s.price),
+    );
+    if (picked != null) setState(() => _selectedService = picked);
+  }
+
+  Future<void> _pickCustomer() async {
+    final picked = await showSearchablePicker<Customer>(
+      context: context,
+      title: 'Pilih Customer',
+      hintText: 'Cari nama atau nomor HP',
+      onSearch: _searchCustomers,
+      labelOf: (c) => c.name,
+      subtitleOf: (c) => c.phone,
+    );
+    if (picked != null) setState(() => _selectedCustomer = picked);
+  }
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+    if (_selectedService == null) {
+      setState(() => _errorMessage = 'Pilih layanan terlebih dahulu.');
+      return;
+    }
 
     setState(() {
       _submitting = true;
@@ -69,10 +132,8 @@ class _CreateTransactionScreenState extends State<CreateTransactionScreen> {
 
     try {
       final result = await widget.transactionService.create(
-        serviceId: _serviceIdController.text.trim(),
-        customerId: _customerIdController.text.trim().isEmpty
-            ? null
-            : _customerIdController.text.trim(),
+        serviceId: _selectedService!.id,
+        customerId: _selectedCustomer?.id,
         paymentMethod: _paymentMethod,
         discountAmount: num.tryParse(_discountController.text.trim()) ?? 0,
         serviceHourType: _hourType,
@@ -208,32 +269,23 @@ class _CreateTransactionScreenState extends State<CreateTransactionScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppColors.secondarySurface,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Text(
-                'Belum ada katalog layanan/customer di app ini — isi Service ID '
-                '(dan Customer ID bila ada) secara manual.',
-                style: TextStyle(color: AppColors.secondaryText),
-              ),
+            _buildPickerTile(
+              label: 'Service',
+              placeholder: 'Pilih layanan',
+              value: _selectedService == null
+                  ? null
+                  : '${_selectedService!.name} • ${formatRupiah(_selectedService!.price)}',
+              onTap: _pickService,
             ),
             const SizedBox(height: 16),
-            TextFormField(
-              controller: _serviceIdController,
-              decoration: const InputDecoration(labelText: 'Service ID'),
-              validator: (value) => (value == null || value.trim().isEmpty)
-                  ? 'Service ID wajib diisi'
-                  : null,
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _customerIdController,
-              decoration: const InputDecoration(
-                labelText: 'Customer ID (opsional)',
-              ),
+            _buildPickerTile(
+              label: 'Customer (opsional)',
+              placeholder: 'Pilih customer',
+              value: _selectedCustomer?.name,
+              onTap: _pickCustomer,
+              onClear: _selectedCustomer == null
+                  ? null
+                  : () => setState(() => _selectedCustomer = null),
             ),
             const SizedBox(height: 16),
             Text('Metode Bayar', style: Theme.of(context).textTheme.labelLarge),
@@ -300,6 +352,33 @@ class _CreateTransactionScreenState extends State<CreateTransactionScreen> {
                   : const Text('Buat Transaksi'),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPickerTile({
+    required String label,
+    required String placeholder,
+    required String? value,
+    required VoidCallback onTap,
+    VoidCallback? onClear,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      child: InputDecorator(
+        decoration: InputDecoration(
+          labelText: label,
+          suffixIcon: onClear != null
+              ? IconButton(icon: const Icon(Icons.clear), onPressed: onClear)
+              : const Icon(Icons.arrow_drop_down),
+        ),
+        child: Text(
+          value ?? placeholder,
+          overflow: TextOverflow.ellipsis,
+          style: value == null
+              ? TextStyle(color: Theme.of(context).hintColor)
+              : null,
         ),
       ),
     );

@@ -30,6 +30,24 @@ class ServiceCatalogService {
     }
   }
 
+  /// For the "pilih layanan" picker in the AGENT create-transaction flow
+  /// — `/services` has no `search` param (Kelola doc §3.1), and that
+  /// same doc flags this exact picker as the one that silently loses
+  /// services past row 20 if it only fetches page 1. Walks pages at the
+  /// max `limit` (100) until `totalPages` is exhausted, then the picker
+  /// filters the full in-memory list by name/code as the user types.
+  Future<List<ServiceItem>> listAll() async {
+    final services = <ServiceItem>[];
+    var page = 1;
+    while (true) {
+      final result = await list(page: page, limit: 100);
+      services.addAll(result.services);
+      if (!result.pagination.hasNextPage) break;
+      page++;
+    }
+    return services;
+  }
+
   /// Unlike the list endpoint, detail has no `isActive` filter at all
   /// — an inactive service's id still resolves here (doc §3.2). Don't
   /// treat a successful fetch as "this service is usable"; check

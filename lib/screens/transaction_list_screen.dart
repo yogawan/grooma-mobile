@@ -8,6 +8,8 @@ import '../models/user.dart';
 import '../services/api_exception.dart';
 import '../services/auth_controller.dart';
 import '../services/change_request_service.dart';
+import '../services/customer_service.dart';
+import '../services/service_catalog_service.dart';
 import '../services/transaction_service.dart';
 import '../theme/app_colors.dart';
 import '../utils/formatters.dart';
@@ -36,6 +38,8 @@ class TransactionListScreen extends StatefulWidget {
     required this.changeRequestService,
     required this.authController,
     required this.user,
+    this.customerService,
+    this.serviceCatalogService,
     this.onChangeRequestsReviewed,
   });
 
@@ -43,6 +47,13 @@ class TransactionListScreen extends StatefulWidget {
   final ChangeRequestService changeRequestService;
   final AuthController authController;
   final User user;
+
+  // Only needed for the AGENT "Transaksi Baru" flow (HOST can't create
+  // transactions at all — transaction doc §0 — and never passes these).
+  // Nullable here rather than required so HOST's call site doesn't have
+  // to thread services it will never use.
+  final CustomerService? customerService;
+  final ServiceCatalogService? serviceCatalogService;
 
   /// Notifies the parent (bottom-nav badge count) after the Persetujuan
   /// sub-page is closed, since approving/rejecting there can change it.
@@ -138,6 +149,8 @@ class _TransactionListScreenState extends State<TransactionListScreen> {
           changeRequestService: widget.changeRequestService,
           authController: widget.authController,
           user: widget.user,
+          customerService: widget.customerService!,
+          serviceCatalogService: widget.serviceCatalogService!,
         ),
       ),
     );
@@ -270,7 +283,8 @@ class _TransactionListScreenState extends State<TransactionListScreen> {
           onRefresh: _load,
           child: ListView.separated(
             itemCount: _transactions.length,
-            separatorBuilder: (context, index) => const Divider(height: 1),
+            separatorBuilder: (context, index) =>
+                const Divider(height: 1, thickness: 1, color: AppColors.border),
             itemBuilder: (context, index) =>
                 _buildRow(context, _transactions[index]),
           ),
